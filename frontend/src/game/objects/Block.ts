@@ -1,19 +1,20 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '@game/config';
 
-// Enhanced block colors matching benchmark game
+// Benchmark-matched block colors (Drop Merge 2048 style)
 const BLOCK_COLORS: Record<number, { main: number; light: number; dark: number }> = {
-  2: { main: 0xFFE082, light: 0xFFECB3, dark: 0xFFCA28 },      // Yellow
-  4: { main: 0xFFD54F, light: 0xFFE082, dark: 0xFFB300 },      // Gold Yellow
-  8: { main: 0x81C784, light: 0xA5D6A7, dark: 0x4CAF50 },      // Green
-  16: { main: 0xE57373, light: 0xEF9A9A, dark: 0xD32F2F },     // Red
-  32: { main: 0xF06292, light: 0xF48FB1, dark: 0xC2185B },     // Pink/Magenta
-  64: { main: 0xFFB74D, light: 0xFFCC80, dark: 0xF57C00 },     // Orange
-  128: { main: 0xBA68C8, light: 0xCE93D8, dark: 0x8E24AA },    // Purple
-  256: { main: 0x64B5F6, light: 0x90CAF9, dark: 0x1976D2 },    // Blue
-  512: { main: 0x4FC3F7, light: 0x81D4FA, dark: 0x0288D1 },    // Light Blue
-  1024: { main: 0x4DB6AC, light: 0x80CBC4, dark: 0x00897B },   // Teal
-  2048: { main: 0xFFD700, light: 0xFFE44D, dark: 0xFFA000 },   // Gold
+  2: { main: 0x90EE90, light: 0xB8F4B8, dark: 0x6FCF6F },      // 연두색 (Light Green)
+  4: { main: 0x4ECDC4, light: 0x7EDDD6, dark: 0x3BABA4 },      // 초록색 (Teal)
+  8: { main: 0x45B7D1, light: 0x75CFDF, dark: 0x339AAF },      // 청록색 (Cyan)
+  16: { main: 0x5D6BE8, light: 0x8D97F0, dark: 0x4554C9 },     // 파란색 (Blue)
+  32: { main: 0xE8875D, light: 0xF0A888, dark: 0xC96B45 },     // 주황색 (Orange)
+  64: { main: 0xE85D8C, light: 0xF088A8, dark: 0xC9456E },     // 분홍색 (Pink)
+  128: { main: 0x7BA3A8, light: 0x9FBFC3, dark: 0x5F8589 },    // 청회색 (Gray-Teal)
+  256: { main: 0xE85DA8, light: 0xF088C3, dark: 0xC94589 },    // 분홍색 (Magenta)
+  512: { main: 0x5DE87B, light: 0x88F09D, dark: 0x45C95F },    // 초록색 (Green)
+  1024: { main: 0x888888, light: 0xAAAAAA, dark: 0x666666 },   // 회색 (Gray)
+  2048: { main: 0xFF8C00, light: 0xFFAA44, dark: 0xCC7000 },   // 주황색 특수 (Orange Special)
+  4096: { main: 0x9B59B6, light: 0xB882CC, dark: 0x7D4792 },   // 보라색 특수 (Purple Special)
 };
 
 export class Block extends Phaser.GameObjects.Container {
@@ -22,6 +23,11 @@ export class Block extends Phaser.GameObjects.Container {
   private blockGraphics: Phaser.GameObjects.Graphics;
   private highlightGraphics: Phaser.GameObjects.Graphics;
   private borderGraphics: Phaser.GameObjects.Graphics;
+  private glowGraphics: Phaser.GameObjects.Graphics;
+  private crownText: Phaser.GameObjects.Text | null = null;
+  private sparkleParticles: Phaser.GameObjects.Graphics[] = [];
+  private glowTween: Phaser.Tweens.Tween | null = null;
+  private sparkleTween: Phaser.Tweens.Tween | null = null;
   private label: Phaser.GameObjects.Text;
   private labelShadow: Phaser.GameObjects.Text;
 
@@ -34,6 +40,7 @@ export class Block extends Phaser.GameObjects.Container {
     const radius = 8;
 
     // Create graphics layers
+    this.glowGraphics = scene.add.graphics();
     this.shadowGraphics = scene.add.graphics();
     this.blockGraphics = scene.add.graphics();
     this.highlightGraphics = scene.add.graphics();
@@ -42,7 +49,8 @@ export class Block extends Phaser.GameObjects.Container {
     // Draw all layers
     this.drawBlock(size, radius);
 
-    // Add graphics to container
+    // Add graphics to container (glow behind everything)
+    this.add(this.glowGraphics);
     this.add(this.shadowGraphics);
     this.add(this.blockGraphics);
     this.add(this.highlightGraphics);
@@ -70,7 +78,131 @@ export class Block extends Phaser.GameObjects.Container {
     this.label.setOrigin(0.5, 0.5);
     this.add(this.label);
 
+    // Add special effects for 2048/4096 blocks
+    if (this.isSpecialBlock()) {
+      this.addCrownIcon();
+      this.addSparkleEffect();
+      this.startGlowAnimation();
+    }
+
     scene.add.existing(this);
+  }
+
+  private isSpecialBlock(): boolean {
+    return this.value >= 2048;
+  }
+
+  private addCrownIcon(): void {
+    const { CELL_SIZE } = GAME_CONFIG;
+    const size = CELL_SIZE - 6;
+
+    // Crown emoji above the number
+    this.crownText = this.scene.add.text(0, -size / 4 - 2, '👑', {
+      fontSize: '14px',
+    });
+    this.crownText.setOrigin(0.5, 0.5);
+    this.add(this.crownText);
+
+    // Adjust label position down slightly to make room for crown
+    this.label.setY(6);
+    this.labelShadow.setY(7);
+  }
+
+  private addSparkleEffect(): void {
+    const { CELL_SIZE } = GAME_CONFIG;
+    const size = CELL_SIZE - 6;
+    const colors = BLOCK_COLORS[this.value] || BLOCK_COLORS[2048];
+
+    // Create sparkle particles at corners
+    const sparklePositions = [
+      { x: -size / 2 + 8, y: -size / 2 + 8 },
+      { x: size / 2 - 8, y: -size / 2 + 8 },
+      { x: -size / 2 + 8, y: size / 2 - 8 },
+      { x: size / 2 - 8, y: size / 2 - 8 },
+    ];
+
+    sparklePositions.forEach(pos => {
+      const sparkle = this.scene.add.graphics();
+      sparkle.fillStyle(0xFFFFFF, 0.8);
+      sparkle.fillCircle(pos.x, pos.y, 3);
+      sparkle.fillStyle(colors.light, 0.6);
+      sparkle.fillCircle(pos.x, pos.y, 2);
+      this.sparkleParticles.push(sparkle);
+      this.add(sparkle);
+    });
+
+    // Animate sparkles
+    this.sparkleTween = this.scene.tweens.add({
+      targets: this.sparkleParticles,
+      alpha: { from: 1, to: 0.3 },
+      scale: { from: 1, to: 0.5 },
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private startGlowAnimation(): void {
+    const colors = BLOCK_COLORS[this.value] || BLOCK_COLORS[2048];
+    const { CELL_SIZE } = GAME_CONFIG;
+    const size = CELL_SIZE - 6;
+
+    // Draw initial glow
+    this.drawGlow(size, colors.light, 0.3);
+
+    // Pulse animation for glow
+    this.glowTween = this.scene.tweens.add({
+      targets: this.glowGraphics,
+      alpha: { from: 0.3, to: 0.7 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private drawGlow(size: number, color: number, alpha: number): void {
+    this.glowGraphics.clear();
+    const glowSize = size + 12;
+    const halfGlow = glowSize / 2;
+
+    // Outer glow
+    this.glowGraphics.fillStyle(color, alpha * 0.3);
+    this.glowGraphics.fillRoundedRect(-halfGlow, -halfGlow, glowSize, glowSize, 12);
+
+    // Middle glow
+    const midSize = size + 6;
+    const halfMid = midSize / 2;
+    this.glowGraphics.fillStyle(color, alpha * 0.5);
+    this.glowGraphics.fillRoundedRect(-halfMid, -halfMid, midSize, midSize, 10);
+  }
+
+  private removeSpecialEffects(): void {
+    // Stop and remove glow
+    if (this.glowTween) {
+      this.glowTween.stop();
+      this.glowTween = null;
+    }
+    this.glowGraphics.clear();
+
+    // Stop and remove sparkles
+    if (this.sparkleTween) {
+      this.sparkleTween.stop();
+      this.sparkleTween = null;
+    }
+    this.sparkleParticles.forEach(sparkle => sparkle.destroy());
+    this.sparkleParticles = [];
+
+    // Remove crown
+    if (this.crownText) {
+      this.crownText.destroy();
+      this.crownText = null;
+    }
+
+    // Reset label position
+    this.label.setY(0);
+    this.labelShadow.setY(1);
   }
 
   private drawBlock(size: number, radius: number): void {
@@ -120,7 +252,10 @@ export class Block extends Phaser.GameObjects.Container {
   }
 
   setValue(value: number): void {
+    const wasSpecial = this.isSpecialBlock();
     this.value = value;
+    const isNowSpecial = this.isSpecialBlock();
+
     const { CELL_SIZE } = GAME_CONFIG;
     const size = CELL_SIZE - 6;
     const radius = 8;
@@ -138,6 +273,46 @@ export class Block extends Phaser.GameObjects.Container {
 
     this.labelShadow.setText(value.toString());
     this.labelShadow.setFontSize(fontSize);
+
+    // Handle special effects transition
+    if (!wasSpecial && isNowSpecial) {
+      // Became special - add effects
+      this.addCrownIcon();
+      this.addSparkleEffect();
+      this.startGlowAnimation();
+      this.playSpecialBlockAnimation();
+    } else if (wasSpecial && !isNowSpecial) {
+      // No longer special - remove effects
+      this.removeSpecialEffects();
+    }
+  }
+
+  private playSpecialBlockAnimation(): void {
+    // Celebration animation when reaching 2048/4096
+    this.scene.tweens.add({
+      targets: this,
+      scaleX: 1.4,
+      scaleY: 1.4,
+      duration: 200,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Bounce.easeOut',
+    });
+
+    // Flash effect
+    const flash = this.scene.add.graphics();
+    flash.fillStyle(0xFFFFFF, 0.8);
+    flash.fillCircle(0, 0, 40);
+    this.add(flash);
+    this.sendToBack(flash);
+
+    this.scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      scale: 2,
+      duration: 400,
+      onComplete: () => flash.destroy(),
+    });
   }
 
   private getFontSize(value: number): number {

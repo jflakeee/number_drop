@@ -5,34 +5,36 @@ export const GAME_CONFIG = {
   CELL_SIZE: 60,
   GRID_PADDING: 20,
 
-  // Block settings
+  // Block settings (Benchmark-matched colors)
   BLOCK_COLORS: {
-    2: 0xEEE4DA,
-    4: 0xEDE0C8,
-    8: 0xF2B179,
-    16: 0xF59563,
-    32: 0xF67C5F,
-    64: 0xF65E3B,
-    128: 0xEDCF72,
-    256: 0xEDCC61,
-    512: 0xEDC850,
-    1024: 0xEDC53F,
-    2048: 0xEDC22E,
+    2: 0x90EE90,    // 연두색 (Light Green)
+    4: 0x4ECDC4,    // 초록색 (Teal)
+    8: 0x45B7D1,    // 청록색 (Cyan)
+    16: 0x5D6BE8,   // 파란색 (Blue)
+    32: 0xE8875D,   // 주황색 (Orange)
+    64: 0xE85D8C,   // 분홍색 (Pink)
+    128: 0x7BA3A8,  // 청회색 (Gray-Teal)
+    256: 0xE85DA8,  // 분홍색 (Magenta)
+    512: 0x5DE87B,  // 초록색 (Green)
+    1024: 0x888888, // 회색 (Gray)
+    2048: 0xFF8C00, // 주황색 특수 (Orange Special)
+    4096: 0x9B59B6, // 보라색 특수 (Purple Special)
   } as Record<number, number>,
 
   // Text colors (dark for light backgrounds, light for dark)
   TEXT_COLORS: {
-    2: 0x776E65,
-    4: 0x776E65,
-    8: 0xF9F6F2,
-    16: 0xF9F6F2,
-    32: 0xF9F6F2,
-    64: 0xF9F6F2,
-    128: 0xF9F6F2,
-    256: 0xF9F6F2,
-    512: 0xF9F6F2,
-    1024: 0xF9F6F2,
-    2048: 0xF9F6F2,
+    2: 0x5D4E37,    // Dark text for light green
+    4: 0x5D4E37,    // Dark text for teal
+    8: 0xFFFFFF,
+    16: 0xFFFFFF,
+    32: 0xFFFFFF,
+    64: 0xFFFFFF,
+    128: 0xFFFFFF,
+    256: 0xFFFFFF,
+    512: 0xFFFFFF,
+    1024: 0xFFFFFF,
+    2048: 0xFFFFFF,
+    4096: 0xFFFFFF,
   } as Record<number, number>,
 
   // Starting numbers

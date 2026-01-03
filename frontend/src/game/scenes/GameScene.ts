@@ -57,6 +57,12 @@ export class GameScene extends Phaser.Scene {
   // Continue game flag
   private continueGame: boolean = false;
 
+  // Global ranking display
+  private rankContainer!: Phaser.GameObjects.Container;
+  private rankText!: Phaser.GameObjects.Text;
+  private currentRank: number = 0;
+  private rankUpdateTimer!: Phaser.Time.TimerEvent | null;
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -75,6 +81,9 @@ export class GameScene extends Phaser.Scene {
 
     // Header
     this.createHeader();
+
+    // Global ranking display
+    this.createRankingDisplay();
 
     // Initialize grid position
     this.gridX = (width - GRID_COLS * CELL_SIZE) / 2;
@@ -207,6 +216,136 @@ export class GameScene extends Phaser.Scene {
     settingsBtn.setInteractive({ useHandCursor: true });
   }
 
+  private createRankingDisplay(): void {
+    const { width } = this.cameras.main;
+
+    // Container for ranking display
+    this.rankContainer = this.add.container(width - 80, 85);
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x222831, 0.8);
+    bg.fillRoundedRect(-55, -15, 110, 30, 8);
+    bg.lineStyle(1, 0x4ECDC4, 0.5);
+    bg.strokeRoundedRect(-55, -15, 110, 30, 8);
+    this.rankContainer.add(bg);
+
+    // Globe icon
+    const globeIcon = this.add.text(-45, 0, '🌍', {
+      fontSize: '14px',
+    });
+    globeIcon.setOrigin(0.5, 0.5);
+    this.rankContainer.add(globeIcon);
+
+    // Rank text
+    this.rankText = this.add.text(5, 0, '#------', {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      color: '#4ECDC4',
+      fontStyle: 'bold',
+    });
+    this.rankText.setOrigin(0.5, 0.5);
+    this.rankContainer.add(this.rankText);
+
+    // Make it interactive - clicking goes to leaderboard
+    const hitArea = this.add.rectangle(0, 0, 110, 30, 0x000000, 0);
+    hitArea.setInteractive({ useHandCursor: true });
+    hitArea.on('pointerdown', () => {
+      this.scene.start('LeaderboardScene');
+    });
+    this.rankContainer.add(hitArea);
+
+    // Start rank update timer (every 10 seconds)
+    this.rankUpdateTimer = this.time.addEvent({
+      delay: 10000,
+      callback: this.updateGlobalRank,
+      callbackScope: this,
+      loop: true,
+    });
+
+    // Initial rank fetch
+    this.updateGlobalRank();
+  }
+
+  private async updateGlobalRank(): Promise<void> {
+    if (this.isGameOver) return;
+
+    try {
+      const currentScore = this.scoreManager.getScore();
+      const rank = await leaderboardService.getRankForScore(currentScore);
+
+      if (rank > 0) {
+        const previousRank = this.currentRank;
+        this.currentRank = rank;
+
+        // Format rank with commas
+        const formattedRank = `#${rank.toLocaleString()}`;
+        this.rankText.setText(formattedRank);
+
+        // Show rank up animation if improved
+        if (previousRank > 0 && rank < previousRank) {
+          this.showRankUpAnimation(previousRank - rank);
+        }
+      }
+    } catch (error) {
+      // Silently fail - don't interrupt gameplay
+      console.warn('Failed to fetch rank:', error);
+    }
+  }
+
+  private showRankUpAnimation(improvement: number): void {
+    const { width, height } = this.cameras.main;
+
+    // Create rank up notification
+    const container = this.add.container(width / 2, height / 3);
+
+    // Background
+    const bg = this.add.graphics();
+    bg.fillStyle(0x4ECDC4, 0.95);
+    bg.fillRoundedRect(-70, -25, 140, 50, 10);
+    container.add(bg);
+
+    // Arrow up icon
+    const arrow = this.add.text(-50, 0, '⬆', {
+      fontSize: '20px',
+    });
+    arrow.setOrigin(0.5, 0.5);
+    container.add(arrow);
+
+    // Text
+    const text = this.add.text(10, 0, `Rank Up! +${improvement}`, {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      color: '#FFFFFF',
+      fontStyle: 'bold',
+    });
+    text.setOrigin(0.5, 0.5);
+    container.add(text);
+
+    // Animation
+    container.setScale(0);
+    container.setAlpha(0);
+
+    this.tweens.add({
+      targets: container,
+      scale: 1,
+      alpha: 1,
+      duration: 200,
+      ease: 'Back.easeOut',
+    });
+
+    // Float up and fade out
+    this.tweens.add({
+      targets: container,
+      y: height / 3 - 50,
+      alpha: 0,
+      duration: 500,
+      delay: 1000,
+      ease: 'Quad.easeOut',
+      onComplete: () => container.destroy(),
+    });
+  }
+
   private createColumnArrows(): void {
     const { GRID_COLS, CELL_SIZE } = GAME_CONFIG;
     this.columnArrows = [];
@@ -270,39 +409,58 @@ export class GameScene extends Phaser.Scene {
     const { width } = this.cameras.main;
     const { CELL_SIZE, COLORS } = GAME_CONFIG;
 
-    // Preview container positioned to the right of current block
-    const previewX = width / 2 + CELL_SIZE + 20;
+    // Preview container positioned above the grid, centered
+    const previewX = width / 2;
     const previewY = 180;
 
     this.previewContainer = this.add.container(previewX, previewY);
 
-    // "NEXT" label
-    const nextLabel = this.add.text(0, -35, 'NEXT', {
+    // Current block area (center) - no box needed, block spawns here
+    // Just a subtle indicator
+    const currentBg = this.add.graphics();
+    currentBg.fillStyle(0xFFFFFF, 0.3);
+    currentBg.fillRoundedRect(-CELL_SIZE / 2 - 2, -CELL_SIZE / 2 - 2, CELL_SIZE + 4, CELL_SIZE + 4, 8);
+    this.previewContainer.add(currentBg);
+
+    // NEXT block area (right side, horizontal layout)
+    const nextOffsetX = CELL_SIZE + 15;
+
+    // "NEXT" label above the preview
+    const nextLabel = this.add.text(nextOffsetX, -30, 'NEXT', {
       fontFamily: 'Arial',
-      fontSize: '12px',
+      fontSize: '10px',
       color: '#776E65',
       fontStyle: 'bold',
     });
     nextLabel.setOrigin(0.5, 0.5);
     this.previewContainer.add(nextLabel);
 
-    // Preview background box for NEXT
-    const previewBg = this.add.rectangle(0, 0, CELL_SIZE * 0.7, CELL_SIZE * 0.7, COLORS.DARK, 0.1);
-    previewBg.setStrokeStyle(2, 0xBBADA0);
+    // Preview background box for NEXT (side-by-side)
+    const previewBg = this.add.graphics();
+    previewBg.fillStyle(COLORS.DARK, 0.1);
+    previewBg.fillRoundedRect(nextOffsetX - CELL_SIZE * 0.35, -CELL_SIZE * 0.35, CELL_SIZE * 0.7, CELL_SIZE * 0.7, 6);
+    previewBg.lineStyle(2, 0xBBADA0, 1);
+    previewBg.strokeRoundedRect(nextOffsetX - CELL_SIZE * 0.35, -CELL_SIZE * 0.35, CELL_SIZE * 0.7, CELL_SIZE * 0.7, 6);
     this.previewContainer.add(previewBg);
 
-    // "+1" label for next-next preview
-    const nextNextLabel = this.add.text(0, CELL_SIZE * 0.7 + 15, '+1', {
+    // +1 block area (further right, smaller)
+    const nextNextOffsetX = nextOffsetX + CELL_SIZE * 0.7 + 10;
+
+    // "+1" label
+    const nextNextLabel = this.add.text(nextNextOffsetX, -25, '+1', {
       fontFamily: 'Arial',
-      fontSize: '10px',
+      fontSize: '9px',
       color: '#999999',
     });
     nextNextLabel.setOrigin(0.5, 0.5);
     this.previewContainer.add(nextNextLabel);
 
     // Preview background box for NEXT+1 (smaller)
-    const previewBg2 = this.add.rectangle(0, CELL_SIZE * 0.7 + 45, CELL_SIZE * 0.5, CELL_SIZE * 0.5, COLORS.DARK, 0.1);
-    previewBg2.setStrokeStyle(1, 0x999999);
+    const previewBg2 = this.add.graphics();
+    previewBg2.fillStyle(COLORS.DARK, 0.08);
+    previewBg2.fillRoundedRect(nextNextOffsetX - CELL_SIZE * 0.25, -CELL_SIZE * 0.25, CELL_SIZE * 0.5, CELL_SIZE * 0.5, 4);
+    previewBg2.lineStyle(1, 0x999999, 0.5);
+    previewBg2.strokeRoundedRect(nextNextOffsetX - CELL_SIZE * 0.25, -CELL_SIZE * 0.25, CELL_SIZE * 0.5, CELL_SIZE * 0.5, 4);
     this.previewContainer.add(previewBg2);
   }
 
@@ -520,6 +678,116 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private showComboPopup(comboCount: number): void {
+    const { width, height } = this.cameras.main;
+
+    // Create combo popup container
+    const container = this.add.container(width / 2, height / 2 - 50);
+
+    // Gold frame background
+    const frameBg = this.add.graphics();
+    frameBg.fillStyle(0x222831, 0.95);
+    frameBg.fillRoundedRect(-80, -35, 160, 70, 12);
+
+    // Gold border with glow effect
+    frameBg.lineStyle(4, 0xFFD700, 1);
+    frameBg.strokeRoundedRect(-80, -35, 160, 70, 12);
+
+    // Inner glow
+    frameBg.lineStyle(2, 0xFFF8DC, 0.5);
+    frameBg.strokeRoundedRect(-76, -31, 152, 62, 10);
+    container.add(frameBg);
+
+    // Ribbon decoration at top
+    const ribbon = this.add.graphics();
+    ribbon.fillStyle(0xF96D00, 1);
+    ribbon.fillTriangle(-90, -35, -70, -35, -80, -50);
+    ribbon.fillTriangle(90, -35, 70, -35, 80, -50);
+    container.add(ribbon);
+
+    // Combo text with shadow
+    const shadowText = this.add.text(2, 2, `${comboCount} 콤보!`, {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '28px',
+      color: '#000000',
+      fontStyle: 'bold',
+    });
+    shadowText.setOrigin(0.5, 0.5);
+    shadowText.setAlpha(0.3);
+    container.add(shadowText);
+
+    // Main combo text
+    const comboText = this.add.text(0, 0, `${comboCount} 콤보!`, {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '28px',
+      color: '#FFD700',
+      fontStyle: 'bold',
+    });
+    comboText.setOrigin(0.5, 0.5);
+    container.add(comboText);
+
+    // Star decorations
+    const starPositions = [
+      { x: -60, y: -25 },
+      { x: 60, y: -25 },
+      { x: -55, y: 20 },
+      { x: 55, y: 20 },
+    ];
+    starPositions.forEach(pos => {
+      const star = this.add.text(pos.x, pos.y, '✦', {
+        fontSize: '14px',
+        color: '#FFD700',
+      });
+      star.setOrigin(0.5, 0.5);
+      container.add(star);
+
+      // Twinkle animation for stars
+      this.tweens.add({
+        targets: star,
+        alpha: { from: 1, to: 0.3 },
+        scale: { from: 1, to: 0.6 },
+        duration: 300,
+        yoyo: true,
+        repeat: 2,
+      });
+    });
+
+    // Entrance animation
+    container.setScale(0);
+    container.setAlpha(0);
+
+    this.tweens.add({
+      targets: container,
+      scale: 1,
+      alpha: 1,
+      duration: 200,
+      ease: 'Back.easeOut',
+    });
+
+    // Pulse animation
+    this.tweens.add({
+      targets: container,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 150,
+      delay: 200,
+      yoyo: true,
+      repeat: 1,
+    });
+
+    // Fade out and destroy
+    this.tweens.add({
+      targets: container,
+      y: height / 2 - 80,
+      alpha: 0,
+      scale: 0.8,
+      duration: 400,
+      delay: 800,
+      ease: 'Quad.easeIn',
+      onComplete: () => container.destroy(),
+    });
+  }
+
   private spendCoins(amount: number): void {
     this.coins -= amount;
     this.coinsText.setText(this.coins.toString());
@@ -638,12 +906,14 @@ export class GameScene extends Phaser.Scene {
       this.nextNextBlockPreview = null;
     }
 
-    // Create preview blocks at the preview area position
-    const previewX = width / 2 + CELL_SIZE + 20;
+    // Create preview blocks at the new horizontal layout positions
     const previewY = 180;
+    const nextOffsetX = CELL_SIZE + 15;
+    const nextNextOffsetX = nextOffsetX + CELL_SIZE * 0.7 + 10;
 
-    // NEXT block preview
-    this.nextBlockPreview = new Block(this, previewX, previewY, this.nextValue);
+    // NEXT block preview (to the right of current block)
+    const nextX = width / 2 + nextOffsetX;
+    this.nextBlockPreview = new Block(this, nextX, previewY, this.nextValue);
     this.nextBlockPreview.setScale(0.6);
     this.nextBlockPreview.setAlpha(0);
     this.tweens.add({
@@ -653,9 +923,9 @@ export class GameScene extends Phaser.Scene {
       ease: 'Quad.easeOut',
     });
 
-    // NEXT+1 block preview (smaller, below)
-    const nextNextY = previewY + CELL_SIZE * 0.7 + 45;
-    this.nextNextBlockPreview = new Block(this, previewX, nextNextY, this.nextNextValue);
+    // NEXT+1 block preview (further right, smaller)
+    const nextNextX = width / 2 + nextNextOffsetX;
+    this.nextNextBlockPreview = new Block(this, nextNextX, previewY, this.nextNextValue);
     this.nextNextBlockPreview.setScale(0.45);
     this.nextNextBlockPreview.setAlpha(0);
     this.tweens.add({
@@ -801,6 +1071,11 @@ export class GameScene extends Phaser.Scene {
         const score = globalMerge.value * 2 * (comboCount > 1 ? GAME_CONFIG.COMBO_MULTIPLIER : 1);
         this.scoreManager.addScore(Math.floor(score));
 
+        // Show combo popup for combos >= 2
+        if (comboCount >= 2) {
+          this.showComboPopup(comboCount);
+        }
+
         this.grid.performMerge(globalMerge, () => {
           this.grid.applyGravity(() => {
             // Update position after gravity
@@ -815,6 +1090,11 @@ export class GameScene extends Phaser.Scene {
       comboCount++;
       const score = merge.value * 2 * (comboCount > 1 ? GAME_CONFIG.COMBO_MULTIPLIER : 1);
       this.scoreManager.addScore(Math.floor(score));
+
+      // Show combo popup for combos >= 2
+      if (comboCount >= 2) {
+        this.showComboPopup(comboCount);
+      }
 
       this.grid.performMerge(merge, () => {
         // Apply gravity and check again from the same position
@@ -842,6 +1122,10 @@ export class GameScene extends Phaser.Scene {
       this.autoSaveTimer.destroy();
       this.autoSaveTimer = null;
     }
+    if (this.rankUpdateTimer) {
+      this.rankUpdateTimer.destroy();
+      this.rankUpdateTimer = null;
+    }
 
     // Return to menu
     this.scene.start('MenuScene');
@@ -860,6 +1144,12 @@ export class GameScene extends Phaser.Scene {
     if (this.autoSaveTimer) {
       this.autoSaveTimer.destroy();
       this.autoSaveTimer = null;
+    }
+
+    // Clean up rank update timer
+    if (this.rankUpdateTimer) {
+      this.rankUpdateTimer.destroy();
+      this.rankUpdateTimer = null;
     }
 
     // Clear saved game on game over
