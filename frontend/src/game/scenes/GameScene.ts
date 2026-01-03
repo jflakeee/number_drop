@@ -6,6 +6,7 @@ import { ScoreManager } from '@game/objects/ScoreManager';
 import { leaderboardService } from '@services/LeaderboardService';
 import { gameStateService } from '@services/GameStateService';
 import { useSettingsStore } from '@store/settingsStore';
+import { AdService } from '@services/AdService';
 
 // Item types
 type ItemType = 'bomb' | 'shuffle' | 'undo';
@@ -325,7 +326,7 @@ export class GameScene extends Phaser.Scene {
     const items: { type: ItemType; icon: string; label: string; cost: number }[] = [
       { type: 'bomb', icon: '💣', label: '폭탄', cost: 100 },
       { type: 'shuffle', icon: '🔀', label: '셔플', cost: 100 },
-      { type: 'undo', icon: '📺', label: '+50', cost: 0 },
+      { type: 'undo', icon: '🎬', label: '광고', cost: 0 },
     ];
 
     // Create item buttons
@@ -440,9 +441,8 @@ export class GameScene extends Phaser.Scene {
         this.saveGame(); // Save after shuffle
       });
     } else if (type === 'undo') {
-      // Watch ad for coins (simulated)
-      this.addCoins(50);
-      this.showMessage('+50 코인!', '#4CAF50');
+      // Watch ad for coins
+      this.watchAdForCoins();
     }
   }
 
@@ -517,6 +517,30 @@ export class GameScene extends Phaser.Scene {
       scaleY: 1.3,
       duration: 100,
       yoyo: true,
+    });
+  }
+
+  private watchAdForCoins(): void {
+    if (!AdService.isRewardedAdAvailable()) {
+      const remaining = AdService.getRewardCooldownRemaining();
+      if (remaining > 0) {
+        this.showMessage(`${remaining}초 후 가능`, '#F96D00');
+      }
+      return;
+    }
+
+    AdService.showRewarded({
+      onLoading: () => {
+        this.showMessage('광고 로딩중...', '#F96D00');
+      },
+      onRewarded: () => {
+        const reward = AdService.getRewardAmount();
+        this.addCoins(reward);
+        this.showMessage(`+${reward} 코인!`, '#4CAF50');
+      },
+      onFailed: (error: string) => {
+        this.showMessage(error || '광고 실패', '#E74C3C');
+      },
     });
   }
 
