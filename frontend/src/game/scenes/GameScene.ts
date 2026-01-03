@@ -1,5 +1,5 @@
 ﻿import Phaser from 'phaser';
-import { GAME_CONFIG } from '@game/config';
+import { GAME_CONFIG, AD_CONFIG } from '@game/config';
 import { Grid } from '@game/objects/Grid';
 import { Block } from '@game/objects/Block';
 import { ScoreManager } from '@game/objects/ScoreManager';
@@ -311,7 +311,9 @@ export class GameScene extends Phaser.Scene {
     const { COLORS } = GAME_CONFIG;
 
     // Item bar background
-    const barY = height - 70;
+    // Account for bottom banner ad space when ads are enabled
+    const bannerOffset = AdService.isBannerAdsEnabled() ? AD_CONFIG.BANNER_HEIGHT : 0;
+    const barY = height - 70 - bannerOffset;
     this.add.rectangle(width / 2, barY, width, 100, COLORS.DARK, 0.95);
 
     // Coins display

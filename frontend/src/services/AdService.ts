@@ -170,6 +170,10 @@ class AdServiceClass {
     return this.bannerVisible[position];
   }
 
+  isBannerAdsEnabled(): boolean {
+    return this.config.enableBannerAds;
+  }
+
   isLoading(): boolean {
     return this.isAdLoading;
   }
