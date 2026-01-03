@@ -29,7 +29,7 @@ export class MenuScene extends Phaser.Scene {
     title.setOrigin(0.5, 0.5);
 
     // Subtitle
-    const subtitle = this.add.text(width / 2, height * 0.42, '숫자병합 게임', {
+    const subtitle = this.add.text(width / 2, height * 0.42, '숫자병합 게임 v1.0', {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#F96D00',
