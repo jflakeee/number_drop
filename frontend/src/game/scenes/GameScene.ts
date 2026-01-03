@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
   private nextNextBlockPreview!: Block | null;
   private scoreManager!: ScoreManager;
   private isGameOver: boolean = false;
+  private isProcessing: boolean = false;  // Lock to prevent input during merges
   private previewContainer!: Phaser.GameObjects.Container;
   private columnArrows!: Phaser.GameObjects.Text[];
   private hoveredColumn: number = -1;
@@ -601,7 +602,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleInput(pointer: Phaser.Input.Pointer): void {
-    if (this.isGameOver) return;
+    if (this.isGameOver || this.isProcessing) return;
 
     // Handle bomb item mode
     if (this.activeItem === 'bomb') {
@@ -643,12 +644,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private dropBlock(col: number): void {
-    if (!this.currentBlock) return;
+    if (!this.currentBlock || this.isProcessing) return;
+    this.isProcessing = true;
 
     const row = this.grid.getLowestEmptyRow(col);
 
     if (row === -1) {
       // Column is full - game over
+      this.isProcessing = false;
       this.gameOver();
       return;
     }
@@ -671,6 +674,9 @@ export class GameScene extends Phaser.Scene {
           this.checkMergesFromPosition(col, row, () => {
             // Save game after each drop
             this.saveGame();
+
+            // Clear processing lock
+            this.isProcessing = false;
 
             // Check if game over
             if (this.grid.isTopRowFilled()) {

@@ -199,13 +199,15 @@ export class Grid {
     };
   }
 
+  // Find ALL connected blocks with the same value (recursive flood fill)
   private findAdjacentSameValue(
     col: number,
     row: number,
     value: number
   ): { col: number; row: number }[] {
     const { GRID_COLS, GRID_ROWS } = GAME_CONFIG;
-    const adjacent: { col: number; row: number }[] = [];
+    const visited = new Set<string>();
+    const result: { col: number; row: number }[] = [];
     const directions = [
       { dc: -1, dr: 0 },
       { dc: 1, dr: 0 },
@@ -213,34 +215,77 @@ export class Grid {
       { dc: 0, dr: 1 },
     ];
 
-    for (const { dc, dr } of directions) {
-      const nc = col + dc;
-      const nr = row + dr;
+    // BFS to find all connected same-value blocks
+    const queue: { col: number; row: number }[] = [{ col, row }];
+    visited.add(`${col},${row}`);
 
-      if (nc >= 0 && nc < GRID_COLS && nr >= 0 && nr < GRID_ROWS) {
-        const block = this.cells[nr][nc];
-        if (block && block.getValue() === value) {
-          adjacent.push({ col: nc, row: nr });
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      for (const { dc, dr } of directions) {
+        const nc = current.col + dc;
+        const nr = current.row + dr;
+        const key = `${nc},${nr}`;
+
+        if (nc >= 0 && nc < GRID_COLS && nr >= 0 && nr < GRID_ROWS && !visited.has(key)) {
+          visited.add(key);
+          const block = this.cells[nr][nc];
+          if (block && block.getValue() === value) {
+            result.push({ col: nc, row: nr });
+            queue.push({ col: nc, row: nr });
+          }
         }
       }
     }
 
-    return adjacent;
+    return result;
   }
 
   performMerge(merge: MergeInfo, onComplete: () => void): void {
     const targetPos = this.getCellPosition(merge.col, merge.row);
     const newValue = merge.value * 2;
 
+    // Filter out any null blocks (safety check)
+    const validBlocks = merge.blocks.filter(({ col, row }) => this.cells[row][col] !== null);
+
+    if (validBlocks.length === 0) {
+      onComplete();
+      return;
+    }
+
+    // Clear non-target cells immediately to prevent overlap issues
+    validBlocks.forEach(({ col, row }) => {
+      if (col !== merge.col || row !== merge.row) {
+        // Mark as null immediately to prevent other operations from seeing it
+        const block = this.cells[row][col];
+        if (block) {
+          this.cells[row][col] = null;
+        }
+      }
+    });
+
     let completed = 0;
-    const totalBlocks = merge.blocks.length;
+    const totalBlocks = validBlocks.length;
 
-    merge.blocks.forEach(({ col, row }) => {
-      const block = this.cells[row][col];
-      if (!block) return;
+    validBlocks.forEach(({ col, row }) => {
+      // Get the block (might need to check if it was the target or a moved one)
+      const isTarget = col === merge.col && row === merge.row;
+      const block = isTarget ? this.cells[row][col] : this.scene.children.list.find(
+        (child) => child instanceof Block &&
+        Math.abs((child as Block).x - this.getCellPosition(col, row).x) < 5 &&
+        Math.abs((child as Block).y - this.getCellPosition(col, row).y) < 5
+      ) as Block | undefined;
 
-      if (col === merge.col && row === merge.row) {
-        // Target block - just update value
+      if (!block) {
+        completed++;
+        if (completed === totalBlocks) {
+          onComplete();
+        }
+        return;
+      }
+
+      if (isTarget) {
+        // Target block - update value
         block.setValue(newValue);
         block.playMergeAnimation(() => {
           completed++;
@@ -250,8 +295,6 @@ export class Grid {
         });
       } else {
         // Other blocks - move to target and destroy
-        this.cells[row][col] = null;
-
         this.scene.tweens.add({
           targets: block,
           x: targetPos.x,
@@ -272,42 +315,74 @@ export class Grid {
 
   applyGravity(onComplete: () => void): void {
     const { GRID_COLS, GRID_ROWS, DROP_DURATION } = GAME_CONFIG;
-    let hasMoved = false;
-    let animations = 0;
+    const movements: { block: Block; fromRow: number; toRow: number; col: number }[] = [];
 
+    // First pass: calculate all movements (update cells array immediately)
     for (let col = 0; col < GRID_COLS; col++) {
+      // Process from bottom to top to handle stacked blocks correctly
       for (let row = GRID_ROWS - 2; row >= 0; row--) {
         const block = this.cells[row][col];
         if (!block) continue;
 
         const lowestRow = this.getLowestEmptyRowBelow(col, row);
         if (lowestRow > row) {
-          hasMoved = true;
-          animations++;
-
+          // Update cells array immediately to prevent overlap issues
           this.cells[row][col] = null;
           this.cells[lowestRow][col] = block;
-
-          const targetPos = this.getCellPosition(col, lowestRow);
-
-          this.scene.tweens.add({
-            targets: block,
-            y: targetPos.y,
-            duration: DROP_DURATION,
-            ease: 'Bounce.easeOut',
-            onComplete: () => {
-              animations--;
-              if (animations === 0) {
-                onComplete();
-              }
-            },
-          });
+          movements.push({ block, fromRow: row, toRow: lowestRow, col });
         }
       }
     }
 
-    if (!hasMoved) {
+    if (movements.length === 0) {
       onComplete();
+      return;
+    }
+
+    // Second pass: animate all movements
+    let completedAnimations = 0;
+    const totalAnimations = movements.length;
+
+    movements.forEach(({ block, toRow, col }) => {
+      const targetPos = this.getCellPosition(col, toRow);
+
+      this.scene.tweens.add({
+        targets: block,
+        y: targetPos.y,
+        duration: DROP_DURATION,
+        ease: 'Bounce.easeOut',
+        onComplete: () => {
+          // Ensure block position is exact
+          block.setPosition(targetPos.x, targetPos.y);
+          completedAnimations++;
+          if (completedAnimations === totalAnimations) {
+            // Validate no floating blocks after gravity
+            this.validateNoFloatingBlocks();
+            onComplete();
+          }
+        },
+      });
+    });
+  }
+
+  // Ensure no blocks are floating (fix any inconsistencies)
+  private validateNoFloatingBlocks(): void {
+    const { GRID_COLS, GRID_ROWS } = GAME_CONFIG;
+
+    for (let col = 0; col < GRID_COLS; col++) {
+      for (let row = 0; row < GRID_ROWS - 1; row++) {
+        const block = this.cells[row][col];
+        if (block && this.cells[row + 1][col] === null) {
+          // Found a floating block - move it down immediately
+          const lowestRow = this.getLowestEmptyRowBelow(col, row);
+          if (lowestRow > row) {
+            this.cells[row][col] = null;
+            this.cells[lowestRow][col] = block;
+            const targetPos = this.getCellPosition(col, lowestRow);
+            block.setPosition(targetPos.x, targetPos.y);
+          }
+        }
+      }
     }
   }
 
