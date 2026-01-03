@@ -543,27 +543,17 @@ export class GameScene extends Phaser.Scene {
   private getRandomStartNumber(): number {
     const { START_NUMBERS } = GAME_CONFIG;
 
-    // Get max block value from grid (0 if empty)
-    const maxBlockValue = this.grid ? this.grid.getMaxBlockValue() : 0;
+    // Get all unique block values from grid
+    const gridValues = this.grid ? this.grid.getUniqueValues() : [];
 
-    // If grid is empty or max is small, use default start numbers
-    if (maxBlockValue <= 4) {
+    // If grid is empty, use default start numbers [2, 4]
+    if (gridValues.length === 0) {
       return START_NUMBERS[Math.floor(Math.random() * START_NUMBERS.length)];
     }
 
-    // Calculate max drop value (half of max block value)
-    const maxDropValue = Math.floor(maxBlockValue / 2);
-
-    // Generate possible drop numbers: 2, 4, 8, 16, ... up to maxDropValue
-    const possibleNumbers: number[] = [];
-    let value = 2;
-    while (value <= maxDropValue) {
-      possibleNumbers.push(value);
-      value *= 2;
-    }
-
-    // Random selection from possible numbers
-    return possibleNumbers[Math.floor(Math.random() * possibleNumbers.length)];
+    // Use all visible block values as possible drop values
+    // This makes gameplay more dynamic as higher numbers can drop
+    return gridValues[Math.floor(Math.random() * gridValues.length)];
   }
 
   private handleInput(pointer: Phaser.Input.Pointer): void {

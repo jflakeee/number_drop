@@ -476,6 +476,23 @@ export class Grid {
     return maxValue;
   }
 
+  // Get all unique block values currently on the grid (sorted ascending)
+  getUniqueValues(): number[] {
+    const { GRID_COLS, GRID_ROWS } = GAME_CONFIG;
+    const values = new Set<number>();
+
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        const block = this.cells[row][col];
+        if (block) {
+          values.add(block.getValue());
+        }
+      }
+    }
+
+    return Array.from(values).sort((a, b) => a - b);
+  }
+
   hasBlocks(): boolean {
     const { GRID_COLS, GRID_ROWS } = GAME_CONFIG;
     for (let row = 0; row < GRID_ROWS; row++) {
