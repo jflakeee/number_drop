@@ -60,6 +60,9 @@ export class SettingsScene extends Phaser.Scene {
     this.createToggleRow(width, currentY, '힌트 표시', 'showHint');
     currentY += rowHeight;
 
+    this.createToggleRow(width, currentY, '동적 드롭', 'dynamicDrop');
+    currentY += rowHeight;
+
     this.createToggleRow(width, currentY, '진동', 'vibrationEnabled');
     currentY += rowHeight;
 
@@ -144,6 +147,9 @@ export class SettingsScene extends Phaser.Scene {
         break;
       case 'showHint':
         store.toggleHint();
+        break;
+      case 'dynamicDrop':
+        store.toggleDynamicDrop();
         break;
       case 'vibrationEnabled':
         store.toggleVibration();
@@ -234,6 +240,7 @@ export class SettingsScene extends Phaser.Scene {
       if (!store.musicEnabled) store.toggleMusic();
       if (!store.chainMerge) store.toggleChainMerge();
       if (store.showHint) store.toggleHint();
+      if (!store.dynamicDrop) store.toggleDynamicDrop();
       if (!store.vibrationEnabled) store.toggleVibration();
       store.setDifficulty('normal');
 

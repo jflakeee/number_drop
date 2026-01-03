@@ -5,6 +5,7 @@ import { Block } from '@game/objects/Block';
 import { ScoreManager } from '@game/objects/ScoreManager';
 import { leaderboardService } from '@services/LeaderboardService';
 import { gameStateService } from '@services/GameStateService';
+import { useSettingsStore } from '@store/settingsStore';
 
 // Item types
 type ItemType = 'bomb' | 'shuffle' | 'undo';
@@ -542,6 +543,12 @@ export class GameScene extends Phaser.Scene {
 
   private getRandomStartNumber(): number {
     const { START_NUMBERS } = GAME_CONFIG;
+    const settings = useSettingsStore.getState();
+
+    // If dynamic drop is disabled, always use default start numbers [2, 4]
+    if (!settings.dynamicDrop) {
+      return START_NUMBERS[Math.floor(Math.random() * START_NUMBERS.length)];
+    }
 
     // Get all unique block values from grid
     const gridValues = this.grid ? this.grid.getUniqueValues() : [];

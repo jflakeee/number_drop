@@ -11,6 +11,7 @@ interface SettingsState {
   // Gameplay
   chainMerge: boolean;
   showHint: boolean;
+  dynamicDrop: boolean;
   difficulty: 'easy' | 'normal' | 'hard';
 
   // Device
@@ -22,6 +23,7 @@ interface SettingsState {
   toggleVibration: () => void;
   toggleChainMerge: () => void;
   toggleHint: () => void;
+  toggleDynamicDrop: () => void;
   setDifficulty: (difficulty: 'easy' | 'normal' | 'hard') => void;
   setSoundVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
@@ -37,6 +39,7 @@ export const useSettingsStore = create<SettingsState>()(
       musicVolume: 0.5,
       chainMerge: true,
       showHint: false,
+      dynamicDrop: true,
       difficulty: 'normal',
       vibrationEnabled: true,
 
@@ -46,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
       toggleVibration: () => set((state) => ({ vibrationEnabled: !state.vibrationEnabled })),
       toggleChainMerge: () => set((state) => ({ chainMerge: !state.chainMerge })),
       toggleHint: () => set((state) => ({ showHint: !state.showHint })),
+      toggleDynamicDrop: () => set((state) => ({ dynamicDrop: !state.dynamicDrop })),
       setDifficulty: (difficulty) => set({ difficulty }),
       setSoundVolume: (soundVolume) => set({ soundVolume }),
       setMusicVolume: (musicVolume) => set({ musicVolume }),
