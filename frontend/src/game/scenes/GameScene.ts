@@ -44,6 +44,7 @@ export class GameScene extends Phaser.Scene {
   private coinsText!: Phaser.GameObjects.Text;
   private itemButtons: ItemButton[] = [];
   private activeItem: ItemType | null = null;
+  private itemPaidWithAd: boolean = false;  // Track if current item was paid with ad
   private itemModeText!: Phaser.GameObjects.Text | null;
 
   // Auto-submit system
@@ -373,7 +374,7 @@ export class GameScene extends Phaser.Scene {
     // Cost or label
     const costText = cost > 0 ? `${cost}` : label;
     const costColor = cost > 0 ? '#FFD700' : '#4CAF50';
-    const labelText = this.add.text(0, 15, costText, {
+    const labelText = this.add.text(0, 12, costText, {
       fontFamily: 'Arial',
       fontSize: '12px',
       color: costColor,
@@ -381,6 +382,16 @@ export class GameScene extends Phaser.Scene {
     });
     labelText.setOrigin(0.5, 0.5);
     container.add(labelText);
+
+    // Ad indicator for paid items (shows ad is available as alternative)
+    if (cost > 0) {
+      const adIndicator = this.add.text(0, 24, '🎬', {
+        fontSize: '10px',
+      });
+      adIndicator.setOrigin(0.5, 0.5);
+      adIndicator.setAlpha(0.7);
+      container.add(adIndicator);
+    }
 
     // Make interactive
     const hitArea = this.add.rectangle(0, 0, 70, 60, 0x000000, 0);
@@ -421,9 +432,12 @@ export class GameScene extends Phaser.Scene {
 
     // Check coins for paid items
     if (cost > 0 && this.coins < cost) {
-      this.showMessage('코인이 부족합니다!', '#E74C3C');
+      // Offer to watch ad instead
+      this.useItemWithAd(type, cost);
       return;
     }
+
+    this.itemPaidWithAd = false;  // Using coins
 
     if (type === 'bomb') {
       // Enter bomb selection mode
@@ -431,7 +445,10 @@ export class GameScene extends Phaser.Scene {
       this.showItemModeIndicator('블록???�택?�세??(?�� ??��)');
     } else if (type === 'shuffle') {
       // Use shuffle immediately
-      if (cost > 0) this.spendCoins(cost);
+      if (cost > 0 && !this.itemPaidWithAd) {
+        this.spendCoins(cost);
+      }
+      this.itemPaidWithAd = false;
       if (!this.grid.hasBlocks()) {
         this.showMessage('셔플할 블록이 없습니다!', '#E74C3C');
         return;
@@ -544,6 +561,50 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private useItemWithAd(type: ItemType, _cost: number): void {
+    // Check if ad is available
+    if (!AdService.isRewardedAdAvailable()) {
+      const remaining = AdService.getRewardCooldownRemaining();
+      if (remaining > 0) {
+        this.showMessage(`코인 부족! ${remaining}초 후 광고 가능`, '#F96D00');
+      } else {
+        this.showMessage('코인이 부족합니다!', '#E74C3C');
+      }
+      return;
+    }
+
+    // Show ad, then use item
+    AdService.showRewarded({
+      onLoading: () => {
+        this.showMessage('광고 로딩중...', '#F96D00');
+      },
+      onRewarded: () => {
+        this.showMessage('광고 시청 완료!', '#4CAF50');
+        this.itemPaidWithAd = true;
+        
+        // Now use the item (without coin cost)
+        if (type === 'bomb') {
+          this.activeItem = 'bomb';
+          this.showItemModeIndicator('블록을 선택하세요 (터치 해제)');
+        } else if (type === 'shuffle') {
+          if (!this.grid.hasBlocks()) {
+            this.showMessage('셔플할 블록이 없습니다!', '#E74C3C');
+            this.itemPaidWithAd = false;
+            return;
+          }
+          this.grid.shuffle(() => {
+            this.showMessage('셔플 완료!', '#4CAF50');
+            this.saveGame();
+          });
+          this.itemPaidWithAd = false;
+        }
+      },
+      onFailed: (error: string) => {
+        this.showMessage(error || '광고 실패', '#E74C3C');
+      },
+    });
+  }
+
   private spawnNewBlock(): void {
     if (this.isGameOver) return;
 
@@ -633,7 +694,10 @@ export class GameScene extends Phaser.Scene {
       const gridPos = this.grid.getGridPosition(pointer.x, pointer.y);
       if (gridPos && this.grid.getBlockAt(gridPos.col, gridPos.row)) {
         // Found a block to remove
-        this.spendCoins(100);
+        if (!this.itemPaidWithAd) {
+          this.spendCoins(100);
+        }
+        this.itemPaidWithAd = false;
         this.cancelItemMode();
         this.grid.removeBlock(gridPos.col, gridPos.row, () => {
           this.showMessage('블록 제거!', '#F96D00');
