@@ -62,3 +62,6 @@ workspace/
 
 # Test screenshots (keep docs/ screenshots)
 /*.png
+
+# Local Netlify folder
+.netlify
