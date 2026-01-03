@@ -35,9 +35,9 @@ yarn-error.log*
 # Testing
 coverage/
 
-# Capacitor
-android/
-ios/
+# Capacitor (keep frontend/android and frontend/ios)
+/android/
+/ios/
 
 # Docker
 postgres_data/
