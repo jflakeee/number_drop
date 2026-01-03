@@ -12,6 +12,7 @@ interface SavedGameState {
   bestScore: number;
   coins: number;
   nextValue: number;
+  nextNextValue?: number;  // Optional for backward compatibility
   savedAt: number;
 }
 

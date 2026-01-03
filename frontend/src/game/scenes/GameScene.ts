@@ -26,7 +26,9 @@ export class GameScene extends Phaser.Scene {
   private grid!: Grid;
   private currentBlock!: Block | null;
   private nextValue!: number;
+  private nextNextValue!: number;
   private nextBlockPreview!: Block | null;
+  private nextNextBlockPreview!: Block | null;
   private scoreManager!: ScoreManager;
   private isGameOver: boolean = false;
   private previewContainer!: Phaser.GameObjects.Container;
@@ -95,6 +97,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       // Start new game
       this.nextValue = this.getRandomStartNumber();
+      this.nextNextValue = this.getRandomStartNumber();
       this.spawnNewBlock();
     }
 
@@ -138,8 +141,9 @@ export class GameScene extends Phaser.Scene {
       this.coinsText.setText(this.coins.toString());
     }
 
-    // Restore next value and spawn block
+    // Restore next values and spawn block
     this.nextValue = savedState.nextValue || this.getRandomStartNumber();
+    this.nextNextValue = savedState.nextNextValue || this.getRandomStartNumber();
     this.spawnNewBlock();
 
     return true;
@@ -154,6 +158,7 @@ export class GameScene extends Phaser.Scene {
       bestScore: this.scoreManager.getBestScore(),
       coins: this.coins,
       nextValue: this.nextValue,
+      nextNextValue: this.nextNextValue,
       savedAt: Date.now(),
     };
 
@@ -278,10 +283,24 @@ export class GameScene extends Phaser.Scene {
     nextLabel.setOrigin(0.5, 0.5);
     this.previewContainer.add(nextLabel);
 
-    // Preview background box
+    // Preview background box for NEXT
     const previewBg = this.add.rectangle(0, 0, CELL_SIZE * 0.7, CELL_SIZE * 0.7, COLORS.DARK, 0.1);
     previewBg.setStrokeStyle(2, 0xBBADA0);
     this.previewContainer.add(previewBg);
+
+    // "+1" label for next-next preview
+    const nextNextLabel = this.add.text(0, CELL_SIZE * 0.7 + 15, '+1', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      color: '#999999',
+    });
+    nextNextLabel.setOrigin(0.5, 0.5);
+    this.previewContainer.add(nextNextLabel);
+
+    // Preview background box for NEXT+1 (smaller)
+    const previewBg2 = this.add.rectangle(0, CELL_SIZE * 0.7 + 45, CELL_SIZE * 0.5, CELL_SIZE * 0.5, COLORS.DARK, 0.1);
+    previewBg2.setStrokeStyle(1, 0x999999);
+    this.previewContainer.add(previewBg2);
   }
 
   private createItemUI(): void {
@@ -505,9 +524,12 @@ export class GameScene extends Phaser.Scene {
 
     const { width } = this.cameras.main;
     const value = this.nextValue;
-    this.nextValue = this.getRandomStartNumber();
 
-    // Show next block preview
+    // Shift values: next becomes current, nextNext becomes next
+    this.nextValue = this.nextNextValue || this.getRandomStartNumber();
+    this.nextNextValue = this.getRandomStartNumber();
+
+    // Show next block previews
     this.showNextPreview();
 
     // Create current block at top center
@@ -518,24 +540,39 @@ export class GameScene extends Phaser.Scene {
     const { width } = this.cameras.main;
     const { CELL_SIZE } = GAME_CONFIG;
 
-    // Remove previous preview if exists
+    // Remove previous previews if exist
     if (this.nextBlockPreview) {
       this.nextBlockPreview.destroy();
       this.nextBlockPreview = null;
     }
+    if (this.nextNextBlockPreview) {
+      this.nextNextBlockPreview.destroy();
+      this.nextNextBlockPreview = null;
+    }
 
-    // Create new preview block at the preview area position
+    // Create preview blocks at the preview area position
     const previewX = width / 2 + CELL_SIZE + 20;
     const previewY = 180;
 
+    // NEXT block preview
     this.nextBlockPreview = new Block(this, previewX, previewY, this.nextValue);
-    this.nextBlockPreview.setScale(0.6); // Smaller size for preview
-
-    // Spawn animation for preview
+    this.nextBlockPreview.setScale(0.6);
     this.nextBlockPreview.setAlpha(0);
     this.tweens.add({
       targets: this.nextBlockPreview,
       alpha: 1,
+      duration: 150,
+      ease: 'Quad.easeOut',
+    });
+
+    // NEXT+1 block preview (smaller, below)
+    const nextNextY = previewY + CELL_SIZE * 0.7 + 45;
+    this.nextNextBlockPreview = new Block(this, previewX, nextNextY, this.nextNextValue);
+    this.nextNextBlockPreview.setScale(0.45);
+    this.nextNextBlockPreview.setAlpha(0);
+    this.tweens.add({
+      targets: this.nextNextBlockPreview,
+      alpha: 0.8,
       duration: 150,
       ease: 'Quad.easeOut',
     });
