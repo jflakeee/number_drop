@@ -2,8 +2,11 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+// Use /number_drop/ for GitHub Pages, / for local dev
+const base = process.env.NODE_ENV === 'production' ? '/number_drop/' : '/';
+
 export default defineConfig({
-  base: '/number_drop/',
+  base,
   plugins: [react()],
   resolve: {
     alias: {
