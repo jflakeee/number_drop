@@ -8,9 +8,11 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx",
+    "deploy": "npm run build && gh-pages -d dist",
     "capacitor:android": "cap sync android && cap open android",
     "capacitor:ios": "cap sync ios && cap open ios"
   },
+  "homepage": "https://jflakeee.github.io/number_drop",
   "dependencies": {
     "phaser": "^3.70.0",
     "react": "^18.2.0",
@@ -27,6 +29,7 @@
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.0",
+    "gh-pages": "^6.3.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.3.0",
