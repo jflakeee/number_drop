@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  base: process.env.GITHUB_PAGES ? '/number_drop/' : '/',
+  base: '/number_drop/',
   plugins: [react()],
   resolve: {
     alias: {

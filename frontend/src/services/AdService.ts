@@ -1,16 +1,27 @@
 /**
- * Ad Service - Implements user-friendly ad policy from design doc
+ * Ad Service - Implements user-friendly ad policy from design doc (lines 11-24)
  *
- * Ad Policy:
- * - Fixed banner ads (top/bottom) - optional, minimal
- * - Rewarded ads only when user clicks ad button
- * - Ad icon visible on buttons that show ads (predictable)
- * - NO time-based automatic ads
- * - NO unconditional interstitial ads
- * - NO ads on level up or stage clear
+ * === AD POLICY (광고 정책) ===
+ *
+ * ALLOWED (허용):
+ * - Fixed banner ads at top/bottom only (화면 상하단 고정 광고만)
+ * - Rewarded ads ONLY when user clicks ad button (버튼 눌렀을때만)
+ * - Ad icon visible on buttons that trigger ads (광고 아이콘 표시)
+ *
+ * PROHIBITED (금지):
+ * - Time-based automatic ads (일정시간 지날때 광고표시 금지)
+ * - Unconditional/random ads (무조건적인 광고 표시 금지)
+ * - Ads on level up (레벨업 할때 광고표시 금지)
+ * - Ads on stage clear (스테이지 클리어 할때 광고표시 금지)
+ * - Interstitial/popup ads (전면 광고 금지)
+ * - Ads that interrupt gameplay (게임 방해 광고 금지)
+ *
+ * PRINCIPLE: Ads should be MINIMAL and PREDICTABLE (광고 최소화, 예측 가능)
  */
 
+// Ad types allowed by policy
 type BannerPosition = 'top' | 'bottom';
+type AllowedAdType = 'banner' | 'rewarded'; // Only these types allowed
 
 interface AdCallbacks {
   onRewarded?: () => void;
@@ -177,7 +188,53 @@ class AdServiceClass {
   isLoading(): boolean {
     return this.isAdLoading;
   }
+
+  // === POLICY ENFORCEMENT METHODS ===
+
+  /**
+   * Check if showing an ad is allowed in current context
+   * Returns false for prohibited scenarios (level up, stage clear, etc.)
+   */
+  isAdAllowedInContext(context: 'levelUp' | 'stageClear' | 'gameOver' | 'userAction'): boolean {
+    // PROHIBITED contexts - never show ads
+    if (context === 'levelUp') return false;
+    if (context === 'stageClear') return false;
+    if (context === 'gameOver') return false;
+
+    // ALLOWED - only on explicit user action
+    return context === 'userAction';
+  }
+
+  /**
+   * PROHIBITED: Interstitial ads are not allowed by policy
+   * This method exists to prevent accidental implementation
+   */
+  showInterstitial(): never {
+    throw new Error('POLICY VIOLATION: Interstitial ads are prohibited (전면 광고 금지)');
+  }
+
+  /**
+   * PROHIBITED: Time-based automatic ads are not allowed
+   * This method exists to prevent accidental implementation
+   */
+  scheduleTimedAd(_delayMs: number): never {
+    throw new Error('POLICY VIOLATION: Time-based ads are prohibited (일정시간 광고 금지)');
+  }
+
+  /**
+   * Get policy summary for debugging/logging
+   */
+  getPolicySummary(): string {
+    return `
+Ad Policy Status:
+- Banner Ads: ${this.config.enableBannerAds ? 'ENABLED (top/bottom only)' : 'DISABLED'}
+- Rewarded Ads: ${this.config.enableRewardedAds ? 'ENABLED (user-triggered only)' : 'DISABLED'}
+- Interstitial Ads: PROHIBITED
+- Time-based Ads: PROHIBITED
+- Level Up/Stage Clear Ads: PROHIBITED
+    `.trim();
+  }
 }
 
 export const AdService = new AdServiceClass();
-export type { AdCallbacks, AdConfig, BannerPosition };
+export type { AdCallbacks, AdConfig, BannerPosition, AllowedAdType };

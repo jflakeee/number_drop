@@ -366,4 +366,43 @@ export class Block extends Phaser.GameObjects.Container {
       ease: 'Back.easeOut',
     });
   }
+
+  // Hint highlighting methods
+  private hintTween: Phaser.Tweens.Tween | null = null;
+  private hintGraphics: Phaser.GameObjects.Graphics | null = null;
+
+  showHint(): void {
+    if (this.hintGraphics) return; // Already showing hint
+
+    const { CELL_SIZE } = GAME_CONFIG;
+    const size = CELL_SIZE - 6;
+
+    // Create hint glow effect
+    this.hintGraphics = this.scene.add.graphics();
+    this.hintGraphics.lineStyle(4, 0xFFD700, 1);
+    this.hintGraphics.strokeRoundedRect(-size / 2 - 2, -size / 2 - 2, size + 4, size + 4, 10);
+    this.add(this.hintGraphics);
+    this.sendToBack(this.hintGraphics);
+
+    // Pulsing animation
+    this.hintTween = this.scene.tweens.add({
+      targets: this.hintGraphics,
+      alpha: { from: 1, to: 0.3 },
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  hideHint(): void {
+    if (this.hintTween) {
+      this.hintTween.stop();
+      this.hintTween = null;
+    }
+    if (this.hintGraphics) {
+      this.hintGraphics.destroy();
+      this.hintGraphics = null;
+    }
+  }
 }

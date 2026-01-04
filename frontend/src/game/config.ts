@@ -64,6 +64,6 @@ export const AD_CONFIG = {
   BANNER_BOTTOM: 'ca-app-pub-xxxxx/xxxxx',
   REWARDED: 'ca-app-pub-xxxxx/xxxxx',
 
-  // Banner sizes
-  BANNER_HEIGHT: 50,
+  // Banner sizes (60px banner + 10px padding)
+  BANNER_HEIGHT: 70,
 };

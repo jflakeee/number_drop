@@ -241,56 +241,60 @@ export class Grid {
     return result;
   }
 
-  performMerge(merge: MergeInfo, onComplete: () => void): void {
+  performMerge(merge: MergeInfo, onComplete: (mergedBlock: Block | null) => void): void {
     const targetPos = this.getCellPosition(merge.col, merge.row);
     const newValue = merge.value * 2;
 
-    // Filter out any null blocks (safety check)
-    const validBlocks = merge.blocks.filter(({ col, row }) => this.cells[row][col] !== null);
+    // First pass: Collect all block references BEFORE modifying cells array
+    const blockRefs = new Map<string, Block>();
+    merge.blocks.forEach(({ col, row }) => {
+      const block = this.cells[row][col];
+      if (block) {
+        blockRefs.set(`${col},${row}`, block);
+      }
+    });
 
-    if (validBlocks.length === 0) {
-      onComplete();
+    if (blockRefs.size === 0) {
+      onComplete(null);
       return;
     }
 
-    // Clear non-target cells immediately to prevent overlap issues
-    validBlocks.forEach(({ col, row }) => {
+    // Get target block reference before clearing
+    const targetKey = `${merge.col},${merge.row}`;
+    const targetBlock = blockRefs.get(targetKey) || null;
+
+    // Second pass: Clear non-target cells from array (blocks still exist visually)
+    merge.blocks.forEach(({ col, row }) => {
       if (col !== merge.col || row !== merge.row) {
-        // Mark as null immediately to prevent other operations from seeing it
-        const block = this.cells[row][col];
-        if (block) {
-          this.cells[row][col] = null;
-        }
+        this.cells[row][col] = null;
       }
     });
 
     let completed = 0;
-    const totalBlocks = validBlocks.length;
+    const totalBlocks = blockRefs.size;
 
-    validBlocks.forEach(({ col, row }) => {
-      // Get the block (might need to check if it was the target or a moved one)
-      const isTarget = col === merge.col && row === merge.row;
-      const block = isTarget ? this.cells[row][col] : this.scene.children.list.find(
-        (child) => child instanceof Block &&
-        Math.abs((child as Block).x - this.getCellPosition(col, row).x) < 5 &&
-        Math.abs((child as Block).y - this.getCellPosition(col, row).y) < 5
-      ) as Block | undefined;
+    // Third pass: Animate using saved references
+    merge.blocks.forEach(({ col, row }) => {
+      const key = `${col},${row}`;
+      const block = blockRefs.get(key);
 
       if (!block) {
         completed++;
         if (completed === totalBlocks) {
-          onComplete();
+          onComplete(targetBlock);
         }
         return;
       }
 
+      const isTarget = col === merge.col && row === merge.row;
+
       if (isTarget) {
-        // Target block - update value
+        // Target block - update value and play merge animation
         block.setValue(newValue);
         block.playMergeAnimation(() => {
           completed++;
           if (completed === totalBlocks) {
-            onComplete();
+            onComplete(targetBlock);
           }
         });
       } else {
@@ -305,7 +309,7 @@ export class Grid {
             block.destroy();
             completed++;
             if (completed === totalBlocks) {
-              onComplete();
+              onComplete(targetBlock);
             }
           },
         });
@@ -317,29 +321,41 @@ export class Grid {
     const { GRID_COLS, GRID_ROWS, DROP_DURATION } = GAME_CONFIG;
     const movements: { block: Block; fromRow: number; toRow: number; col: number }[] = [];
 
-    // First pass: calculate all movements (update cells array immediately)
+    // Process each column independently, from bottom to top
     for (let col = 0; col < GRID_COLS; col++) {
-      // Process from bottom to top to handle stacked blocks correctly
-      for (let row = GRID_ROWS - 2; row >= 0; row--) {
+      // Collect all blocks in this column
+      const columnBlocks: { block: Block; row: number }[] = [];
+      for (let row = 0; row < GRID_ROWS; row++) {
         const block = this.cells[row][col];
-        if (!block) continue;
-
-        const lowestRow = this.getLowestEmptyRowBelow(col, row);
-        if (lowestRow > row) {
-          // Update cells array immediately to prevent overlap issues
-          this.cells[row][col] = null;
-          this.cells[lowestRow][col] = block;
-          movements.push({ block, fromRow: row, toRow: lowestRow, col });
+        if (block) {
+          columnBlocks.push({ block, row });
+          this.cells[row][col] = null; // Clear all cells in column
         }
+      }
+
+      // Place blocks from bottom, maintaining their order
+      let targetRow = GRID_ROWS - 1;
+      // Sort blocks by original row (bottom first, so we fill from bottom)
+      columnBlocks.sort((a, b) => b.row - a.row);
+
+      for (const { block, row: fromRow } of columnBlocks) {
+        this.cells[targetRow][col] = block;
+
+        if (targetRow !== fromRow) {
+          movements.push({ block, fromRow, toRow: targetRow, col });
+        }
+        targetRow--;
       }
     }
 
     if (movements.length === 0) {
+      // Even if no movements, validate and call complete
+      this.validateNoFloatingBlocks();
       onComplete();
       return;
     }
 
-    // Second pass: animate all movements
+    // Animate all movements
     let completedAnimations = 0;
     const totalAnimations = movements.length;
 
@@ -348,15 +364,16 @@ export class Grid {
 
       this.scene.tweens.add({
         targets: block,
+        x: targetPos.x,
         y: targetPos.y,
         duration: DROP_DURATION,
         ease: 'Bounce.easeOut',
         onComplete: () => {
-          // Ensure block position is exact
+          // Ensure block position is exactly at cell center
           block.setPosition(targetPos.x, targetPos.y);
           completedAnimations++;
           if (completedAnimations === totalAnimations) {
-            // Validate no floating blocks after gravity
+            // Final validation
             this.validateNoFloatingBlocks();
             onComplete();
           }
@@ -411,10 +428,12 @@ export class Grid {
   }
 
   // Find the row of a block with specific value in a column (for tracking after gravity)
+  // Searches from bottom to top since merged blocks typically end up lower
   getBlockRow(col: number, value: number): number {
     const { GRID_ROWS } = GAME_CONFIG;
 
-    for (let row = 0; row < GRID_ROWS; row++) {
+    // Search from bottom to top to find the lowest block with this value
+    for (let row = GRID_ROWS - 1; row >= 0; row--) {
       const block = this.cells[row][col];
       if (block && block.getValue() === value) {
         return row;
@@ -422,6 +441,21 @@ export class Grid {
     }
 
     return -1;
+  }
+
+  // Find a block by reference and return its current position
+  findBlockPosition(targetBlock: Block): { col: number; row: number } | null {
+    const { GRID_COLS, GRID_ROWS } = GAME_CONFIG;
+
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        if (this.cells[row][col] === targetBlock) {
+          return { col, row };
+        }
+      }
+    }
+
+    return null;
   }
 
   // Item: Remove a specific block (Bomb)
@@ -618,6 +652,146 @@ export class Grid {
         if (block) {
           block.destroy();
           this.cells[row][col] = null;
+        }
+      }
+    }
+  }
+
+  // Item: Split block value in half (1024→512)
+  splitBlock(col: number, row: number, onComplete: () => void): void {
+    const block = this.cells[row][col];
+    if (!block) {
+      onComplete();
+      return;
+    }
+
+    const currentValue = block.getValue();
+    // Can only split blocks with value > 2
+    if (currentValue <= 2) {
+      onComplete();
+      return;
+    }
+
+    const newValue = currentValue / 2;
+
+    // Split animation
+    this.scene.tweens.add({
+      targets: block,
+      scaleX: 0.5,
+      scaleY: 0.5,
+      duration: 150,
+      yoyo: true,
+      onComplete: () => {
+        block.setValue(newValue);
+        block.playMergeAnimation(onComplete);
+      },
+    });
+  }
+
+  // Item: Remove block completely (different from bomb - no explosion effect)
+  deleteBlock(col: number, row: number, onComplete: () => void): void {
+    const block = this.cells[row][col];
+    if (!block) {
+      onComplete();
+      return;
+    }
+
+    // Fade out and shrink animation
+    this.scene.tweens.add({
+      targets: block,
+      scaleX: 0,
+      scaleY: 0,
+      alpha: 0,
+      duration: 200,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        block.destroy();
+        this.cells[row][col] = null;
+        this.applyGravity(onComplete);
+      },
+    });
+  }
+
+  // Item: Pickup block (remove from grid and return for placement)
+  pickupBlock(col: number, row: number): Block | null {
+    const block = this.cells[row][col];
+    if (!block) {
+      return null;
+    }
+
+    // Remove from grid but don't destroy
+    this.cells[row][col] = null;
+
+    // Apply gravity after pickup
+    this.applyGravity(() => {});
+
+    return block;
+  }
+
+  // Item: Place picked up block at position
+  placePickedBlock(block: Block, col: number, onComplete: () => void): void {
+    const row = this.getLowestEmptyRow(col);
+    if (row === -1) {
+      // Column is full - return block (caller should handle)
+      onComplete();
+      return;
+    }
+
+    const targetPos = this.getCellPosition(col, row);
+
+    // Animate block to new position
+    this.scene.tweens.add({
+      targets: block,
+      x: targetPos.x,
+      y: targetPos.y,
+      duration: GAME_CONFIG.DROP_DURATION,
+      ease: 'Bounce.easeOut',
+      onComplete: () => {
+        this.cells[row][col] = block;
+        onComplete();
+      },
+    });
+  }
+
+  // Check if a block can be split (value > 2)
+  canSplitBlock(col: number, row: number): boolean {
+    const block = this.cells[row][col];
+    return block !== null && block.getValue() > 2;
+  }
+
+  // Save complete state snapshot for undo
+  saveStateSnapshot(): { col: number; row: number; value: number }[] {
+    return this.getState();
+  }
+
+  // Restore state from snapshot (for undo)
+  restoreStateSnapshot(snapshot: { col: number; row: number; value: number }[]): void {
+    this.loadState(snapshot);
+  }
+
+  // Show hints for mergeable blocks
+  showHints(): void {
+    const merges = this.findMerges();
+    if (merges.length === 0) return;
+
+    // Highlight only the first merge opportunity
+    const merge = merges[0];
+    for (const { col, row } of merge.blocks) {
+      const block = this.cells[row][col];
+      if (block) {
+        block.showHint();
+      }
+    }
+  }
+
+  // Hide all hints
+  hideHints(): void {
+    const { GRID_COLS, GRID_ROWS } = GAME_CONFIG;
+    for (let row = 0; row < GRID_ROWS; row++) {
+      for (let col = 0; col < GRID_COLS; col++) {
+        const block = this.cells[row][col];
+        if (block) {
+          block.hideHint();
         }
       }
     }

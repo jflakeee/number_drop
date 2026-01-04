@@ -5,6 +5,7 @@ import { GameScene } from '@game/scenes/GameScene';
 import { GameOverScene } from '@game/scenes/GameOverScene';
 import { LeaderboardScene } from '@game/scenes/LeaderboardScene';
 import { SettingsScene } from '@game/scenes/SettingsScene';
+import { StatsScene } from '@game/scenes/StatsScene';
 import './index.css';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -24,7 +25,7 @@ const config: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, GameScene, GameOverScene, LeaderboardScene, SettingsScene],
+  scene: [BootScene, MenuScene, GameScene, GameOverScene, LeaderboardScene, SettingsScene, StatsScene],
 };
 
 new Phaser.Game(config);

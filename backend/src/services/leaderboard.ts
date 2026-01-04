@@ -85,4 +85,25 @@ export class LeaderboardService {
       throw error;
     }
   }
+
+  async getRankForScore(score: number): Promise<number> {
+    try {
+      // Count how many scores are higher than the given score
+      const higherCount = await this.redis.zcount(LEADERBOARD_KEY, score + 1, '+inf');
+      // Rank is higherCount + 1 (1-indexed)
+      return higherCount + 1;
+    } catch (error) {
+      console.error('Error getting rank for score:', error);
+      return 0;
+    }
+  }
+
+  async getTotalPlayers(): Promise<number> {
+    try {
+      return await this.redis.zcard(LEADERBOARD_KEY);
+    } catch (error) {
+      console.error('Error getting total players:', error);
+      return 0;
+    }
+  }
 }

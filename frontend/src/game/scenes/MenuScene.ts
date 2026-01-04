@@ -29,7 +29,7 @@ export class MenuScene extends Phaser.Scene {
     title.setOrigin(0.5, 0.5);
 
     // Subtitle
-    const subtitle = this.add.text(width / 2, height * 0.42, '숫자병합 게임 v1.2', {
+    const subtitle = this.add.text(width / 2, height * 0.42, '숫자병합 게임 v1.4', {
       fontFamily: 'Arial',
       fontSize: '20px',
       color: '#F96D00',
@@ -37,29 +37,37 @@ export class MenuScene extends Phaser.Scene {
     subtitle.setOrigin(0.5, 0.5);
 
     // Start button
-    this.createButton(width / 2, height * 0.55, '게임 시작', () => {
+    this.createButton(width / 2, height * 0.52, '게임 시작', () => {
       this.scene.start('GameScene');
     });
 
     // Continue button (only show if saved game exists)
-    if (gameStateService.hasSavedGame()) {
-      this.createButton(width / 2, height * 0.65, '이어하기', () => {
+    const hasSaved = gameStateService.hasSavedGame();
+    if (hasSaved) {
+      this.createButton(width / 2, height * 0.61, '이어하기', () => {
         this.scene.start('GameScene', { continueGame: true });
       });
     }
 
     // Ranking button
-    this.createButton(width / 2, height * 0.75, '🏆 랭킹', () => {
+    const rankingY = hasSaved ? height * 0.70 : height * 0.61;
+    this.createButton(width / 2, rankingY, '🏆 랭킹', () => {
       this.scene.start('LeaderboardScene');
     });
 
+    // Stats & Achievements button
+    const statsY = hasSaved ? height * 0.79 : height * 0.70;
+    this.createButton(width / 2, statsY, '📊 통계 & 업적', () => {
+      this.scene.start('StatsScene');
+    });
+
     // Settings button
-    this.createSmallButton(width * 0.3, height * 0.88, '설정', () => {
+    this.createSmallButton(width * 0.3, height * 0.90, '설정', () => {
       this.scene.start('SettingsScene');
     });
 
     // Sound toggle button
-    this.createSoundButton(width * 0.7, height * 0.88);
+    this.createSoundButton(width * 0.7, height * 0.90);
   }
 
   private createSoundButton(x: number, y: number): void {

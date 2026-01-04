@@ -1,7 +1,12 @@
 숫자병합 게임 개발
 
 벤치마크 출처 : 
-https://play.google.com/store/search?q=numberdrop&c=apps&hl=ko&gl=KR&utm_source=apac_med
+https://play.google.com/store/apps/details?id=com.superbox.aos.drop2048&hl=ko&gl=KR&utm_source=apac_med
+
+벤치마크 실제 플레이 영상 : 
+D:\htdocs\test_\number_drop\benchmark_play.mp4
+
+벤치마크와 똑같이 구현
 
 광고 최소화
 화면 상하단 고정 광고만 삽입
@@ -22,7 +27,7 @@ https://play.google.com/store/search?q=numberdrop&c=apps&hl=ko&gl=KR&utm_source=
 
 네트워크 연동해서 다른 사용자들의 점수를 확인하고 순위를 알림
 
-새로 드롭하는 블럭의 숫자를 화면상에 보이는 블럭의 최대 숫자 1/4 까지의 범위로 다양하게 드롭
+새로 드롭하는 블럭의 숫자를 화면상에 보이는 블럭의 최대 숫자 1/8 까지의 범위로 다양하게 드롭
 
 다음블럭 미리보기와 다다음 블럭 미리보기
 
@@ -31,3 +36,9 @@ https://play.google.com/store/search?q=numberdrop&c=apps&hl=ko&gl=KR&utm_source=
 다음 블럭, 다다음 블럭 미리보기가 게임 그리드 배경과 겹치는 위치에 있음 안겹치게 상단 우측에 표시
 
 하단 아이템 버튼이 배너광고와 겹침
+상단 점수표시와 다음 블럭 표시가 겹침 상단메뉴 전체 위치 적절하게 배치
+드럽된 블럭이 튀는 애니메이션 효과를 자연스럽게
+블록이 드롭되는 동안 마우스 위치와 연동 금지
+
+드롭이 시작되는 위치가 상단 중앙으로 고정되어 있는데 는 클릭한 x좌표와 같아야함
+빠르게 클릭한경우 블럭이 공중에 뜨는 현상 발생

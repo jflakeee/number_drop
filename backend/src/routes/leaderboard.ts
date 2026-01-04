@@ -42,4 +42,26 @@ router.post('/submit', async (req, res) => {
   }
 });
 
+// Get rank for a given score (without submitting)
+router.get('/rank-for-score', async (req, res) => {
+  try {
+    const score = parseInt(req.query.score as string) || 0;
+    const rank = await leaderboardService.getRankForScore(score);
+    const totalPlayers = await leaderboardService.getTotalPlayers();
+    res.json({ rank, totalPlayers });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get rank for score' });
+  }
+});
+
+// Get total player count
+router.get('/stats', async (req, res) => {
+  try {
+    const totalPlayers = await leaderboardService.getTotalPlayers();
+    res.json({ totalPlayers });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get stats' });
+  }
+});
+
 export { router as leaderboardRouter };
