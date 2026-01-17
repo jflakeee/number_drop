@@ -45,7 +45,7 @@ export class ScoreManager {
       duration: 400,
       ease: 'Quad.easeOut',
       onUpdate: (tween) => {
-        const value = Math.floor(tween.getValue());
+        const value = Math.floor(tween.getValue() ?? 0);
         this.scoreText.setText(value.toLocaleString());
       },
     });
@@ -62,7 +62,7 @@ export class ScoreManager {
         duration: 400,
         ease: 'Quad.easeOut',
         onUpdate: (tween) => {
-          const value = Math.floor(tween.getValue());
+          const value = Math.floor(tween.getValue() ?? 0);
           this.bestText.setText(`BEST: ${value.toLocaleString()}`);
         },
       });
