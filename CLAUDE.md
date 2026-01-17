@@ -73,7 +73,7 @@ docker-compose down            # Stop all services
 - `@ui` → `src/ui/` (React components for menus)
 
 ### Phaser Scene Flow
-`BootScene` → `MenuScene` → `GameScene` ↔ `GameOverScene` / `LeaderboardScene` / `StatsScene` / `SettingsScene`
+`BootScene` → `LandingScene` → `MenuScene` → `GameScene` ↔ `GameOverScene` / `LeaderboardScene` / `StatsScene` / `SettingsScene`
 
 ### Key Game Objects (frontend/src/game/objects/)
 - `Grid.ts` - Block grid management, merge detection, gravity, hint display
@@ -124,6 +124,7 @@ Settings toggles (via settingsStore):
 - `chainMerge` - Enable/disable chain reactions
 - `showHint` - Show mergeable block hints
 - `difficulty` - Easy/Normal/Hard (affects drop number range)
+- `mergeMultiplier` - 4+ block merge multiplier (1x/2x/3x/4x, default: 2x)
 - Sound effects - Multiple collision sound options (wood, glass, gem, metal, candy, drum, piano)
 - Block collision animations - None, jelly squish, lightning flash
 
@@ -144,6 +145,7 @@ This project currently has no test configuration. When adding tests:
 ## Important Implementation Notes
 
 **Block Drop Physics:**
+- Blocks start 2 cells above grid (120px) for dramatic drop animation
 - Drop should start at clicked x-coordinate, not screen center
 - Prevent mouse tracking during block drop animation
 - Avoid mid-air floating blocks with proper collision detection
@@ -152,14 +154,29 @@ This project currently has no test configuration. When adding tests:
 **Block Merging:**
 - Ensure blocks merge properly without overlapping or passing through
 - Support chain reactions when chainMerge setting is enabled
+- 4+ block merges get multiplier bonus (configurable via mergeMultiplier setting)
 - Next drop number should be within range of max visible block / 8
 
-**Recent Improvements (2026-01-17):**
-- Top menu now displays in single row (y:45) with coins, score, ranking, settings ✅ Tested
-- Merge particles added (12 radial particles + center burst effect) ✅ Tested
-- Score counter animates with count-up effect over 400ms ✅ Tested
+**Phase 5 Implementation Complete (2026-01-17):**
 
-**Testing:**
-- All High Priority benchmark improvements verified with Playwright
-- Test report: `docs/test_report_20260117.md`
-- Screenshots saved in Downloads folder
+All 9 benchmark improvements implemented and tested (commits: 57f6f51, e75514d, e96c9cd)
+
+**High Priority (✅ Complete):**
+- Top menu single-row layout (GameScene.ts:310-400)
+- 12-particle merge effects with center burst (Block.ts:359-420)
+- Score count-up animation, 400ms (ScoreManager.ts:42-80)
+
+**Medium Priority (✅ Complete):**
+- 4-block merge multiplier setting (settingsStore.ts + GameScene.ts:1437-1486)
+- Full-screen combo flash (3+ combos, color-coded by count, GameScene.ts:1002-1056)
+- Enhanced rank-up notification (220x100px, trophy, stars, GameScene.ts:428-557)
+
+**Low Priority (✅ Complete):**
+- Block drop height: 2 cells above grid (GameScene.ts:1480)
+- Item prices balanced 20-40% lower (GameScene.ts:678-689)
+- Landing page scene with animations (LandingScene.ts, 206 lines)
+
+**Test Reports:**
+- `docs/test_report_20260117.md` (High Priority)
+- `docs/medium_priority_implementation.md` (Medium Priority)
+- `docs/low_priority_implementation.md` (Low Priority)
