@@ -13,6 +13,7 @@ interface SettingsState {
   showHint: boolean;
   dynamicDrop: boolean;
   difficulty: 'easy' | 'normal' | 'hard';
+  mergeMultiplier: 1 | 2 | 3 | 4;  // Multiplier when 4+ blocks merge (1=disabled, 2=2x, 3=3x, 4=4x)
 
   // Device
   vibrationEnabled: boolean;
@@ -25,6 +26,7 @@ interface SettingsState {
   toggleHint: () => void;
   toggleDynamicDrop: () => void;
   setDifficulty: (difficulty: 'easy' | 'normal' | 'hard') => void;
+  setMergeMultiplier: (multiplier: 1 | 2 | 3 | 4) => void;
   setSoundVolume: (volume: number) => void;
   setMusicVolume: (volume: number) => void;
 }
@@ -41,6 +43,7 @@ export const useSettingsStore = create<SettingsState>()(
       showHint: false,
       dynamicDrop: true,
       difficulty: 'normal',
+      mergeMultiplier: 2,  // Default 2x for 4+ block merges
       vibrationEnabled: true,
 
       // Actions
@@ -51,6 +54,7 @@ export const useSettingsStore = create<SettingsState>()(
       toggleHint: () => set((state) => ({ showHint: !state.showHint })),
       toggleDynamicDrop: () => set((state) => ({ dynamicDrop: !state.dynamicDrop })),
       setDifficulty: (difficulty) => set({ difficulty }),
+      setMergeMultiplier: (mergeMultiplier) => set({ mergeMultiplier }),
       setSoundVolume: (soundVolume) => set({ soundVolume }),
       setMusicVolume: (musicVolume) => set({ musicVolume }),
     }),

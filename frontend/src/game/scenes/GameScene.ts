@@ -428,54 +428,132 @@ export class GameScene extends Phaser.Scene {
   private showRankUpAnimation(improvement: number): void {
     const { width, height } = this.cameras.main;
 
-    // Create rank up notification
-    const container = this.add.container(width / 2, height / 3);
+    // Enhanced rank up notification (bigger and more prominent)
+    const container = this.add.container(width / 2, height / 2);
 
-    // Background
+    // Glow background
+    const glow = this.add.graphics();
+    glow.fillStyle(0x4ECDC4, 0.3);
+    glow.fillRoundedRect(-115, -55, 230, 110, 20);
+    container.add(glow);
+
+    // Main background with gradient effect
     const bg = this.add.graphics();
-    bg.fillStyle(0x4ECDC4, 0.95);
-    bg.fillRoundedRect(-70, -25, 140, 50, 10);
+    bg.fillStyle(0x222831, 0.98);
+    bg.fillRoundedRect(-110, -50, 220, 100, 16);
+
+    // Gold border
+    bg.lineStyle(4, 0xFFD700, 1);
+    bg.strokeRoundedRect(-110, -50, 220, 100, 16);
+
+    // Inner glow
+    bg.lineStyle(2, 0xFFF8DC, 0.6);
+    bg.strokeRoundedRect(-106, -46, 212, 92, 14);
     container.add(bg);
 
-    // Arrow up icon
-    const arrow = this.add.text(-50, 0, '⬆', {
-      fontSize: '20px',
+    // Trophy/crown icon
+    const icon = this.add.text(-70, -10, '🏆', {
+      fontSize: '48px',
     });
-    arrow.setOrigin(0.5, 0.5);
-    container.add(arrow);
+    icon.setOrigin(0.5, 0.5);
+    container.add(icon);
 
-    // Text
-    const text = this.add.text(10, 0, `Rank Up! +${improvement}`, {
-      fontFamily: 'Arial',
-      fontSize: '16px',
-      color: '#FFFFFF',
+    // "RANK UP!" title
+    const title = this.add.text(25, -25, 'RANK UP!', {
+      fontFamily: 'Arial Black, Arial',
+      fontSize: '24px',
+      color: '#FFD700',
       fontStyle: 'bold',
     });
-    text.setOrigin(0.5, 0.5);
-    container.add(text);
+    title.setOrigin(0.5, 0.5);
+    container.add(title);
 
-    // Animation
+    // Improvement text
+    const improvementText = this.add.text(25, 10, `+${improvement.toLocaleString()} 위 상승!`, {
+      fontFamily: 'Arial',
+      fontSize: '18px',
+      color: '#4ECDC4',
+      fontStyle: 'bold',
+    });
+    improvementText.setOrigin(0.5, 0.5);
+    container.add(improvementText);
+
+    // Star decorations
+    const starPositions = [
+      { x: -100, y: -40 },
+      { x: 100, y: -40 },
+      { x: -95, y: 35 },
+      { x: 95, y: 35 },
+    ];
+    starPositions.forEach(pos => {
+      const star = this.add.text(pos.x, pos.y, '✦', {
+        fontSize: '16px',
+        color: '#FFD700',
+      });
+      star.setOrigin(0.5, 0.5);
+      container.add(star);
+
+      // Twinkle animation
+      this.tweens.add({
+        targets: star,
+        alpha: { from: 1, to: 0.3 },
+        scale: { from: 1, to: 0.5 },
+        duration: 400,
+        yoyo: true,
+        repeat: 3,
+      });
+    });
+
+    // Entrance animation - bigger impact
     container.setScale(0);
     container.setAlpha(0);
+    container.setDepth(1000);  // On top of everything
 
     this.tweens.add({
       targets: container,
-      scale: 1,
+      scale: 1.1,
       alpha: 1,
-      duration: 200,
+      duration: 300,
       ease: 'Back.easeOut',
     });
 
-    // Float up and fade out
+    // Pulse effect
     this.tweens.add({
       targets: container,
-      y: height / 3 - 50,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 200,
+      delay: 300,
+      ease: 'Quad.easeInOut',
+    });
+
+    // Float up and fade out (longer display time)
+    this.tweens.add({
+      targets: container,
+      y: height / 2 - 80,
       alpha: 0,
-      duration: 500,
-      delay: 1000,
+      duration: 600,
+      delay: 2000,  // Show for 2 seconds
       ease: 'Quad.easeOut',
       onComplete: () => container.destroy(),
     });
+
+    // Background flash effect
+    const flash = this.add.graphics();
+    flash.fillStyle(0x4ECDC4, 0.2);
+    flash.fillRect(0, 0, width, height);
+    flash.setDepth(999);
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 400,
+      ease: 'Quad.easeOut',
+      onComplete: () => flash.destroy(),
+    });
+
+    // TODO: Add sound effect when AudioService is fully configured
+    // AudioService.play('rankup');
   }
 
   private createColumnArrows(): void {
@@ -887,6 +965,11 @@ export class GameScene extends Phaser.Scene {
   private showComboPopup(comboCount: number): void {
     const { width, height } = this.cameras.main;
 
+    // Full-screen flash effect for high combos (3+)
+    if (comboCount >= 3) {
+      this.showFullScreenComboFlash(comboCount);
+    }
+
     // Create combo popup container
     const container = this.add.container(width / 2, height / 2 - 50);
 
@@ -992,6 +1075,62 @@ export class GameScene extends Phaser.Scene {
       ease: 'Quad.easeIn',
       onComplete: () => container.destroy(),
     });
+  }
+
+  private showFullScreenComboFlash(comboCount: number): void {
+    const { width, height } = this.cameras.main;
+
+    // Color intensity based on combo count
+    const colors = [
+      0xFFD700,  // Gold (3 combo)
+      0xFF8C00,  // Orange (4 combo)
+      0xFF4500,  // Red-Orange (5 combo)
+      0xFF1493,  // Deep Pink (6+ combo)
+    ];
+    const colorIndex = Math.min(comboCount - 3, colors.length - 1);
+    const flashColor = colors[colorIndex];
+
+    // Create full-screen flash overlay
+    const flash = this.add.graphics();
+    flash.fillStyle(flashColor, 0.4);
+    flash.fillRect(0, 0, width, height);
+    flash.setDepth(900);  // Below popups but above everything else
+
+    // Pulse animation
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 300,
+      ease: 'Quad.easeOut',
+      onComplete: () => flash.destroy(),
+    });
+
+    // Add radial pulse effect
+    const pulse = this.add.graphics();
+    pulse.lineStyle(8, flashColor, 0.8);
+    pulse.strokeCircle(width / 2, height / 2, 50);
+    pulse.setDepth(900);
+
+    this.tweens.add({
+      targets: pulse,
+      alpha: 0,
+      duration: 400,
+      ease: 'Quad.easeOut',
+    });
+
+    this.tweens.add({
+      targets: pulse,
+      scaleX: 8,
+      scaleY: 8,
+      duration: 400,
+      ease: 'Quad.easeOut',
+      onComplete: () => pulse.destroy(),
+    });
+
+    // Screen shake for high combos (5+)
+    if (comboCount >= 5) {
+      this.cameras.main.shake(150, 0.005);
+    }
   }
 
   private spendCoins(amount: number): void {
@@ -1438,7 +1577,16 @@ export class GameScene extends Phaser.Scene {
         const globalMerge = globalMerges[0];
         comboCount++;
         const globalNewValue = globalMerge.value * 2;
-        const score = globalNewValue * (comboCount > 1 ? GAME_CONFIG.COMBO_MULTIPLIER : 1);
+
+        // Calculate score with combo multiplier
+        let score = globalNewValue * (comboCount > 1 ? GAME_CONFIG.COMBO_MULTIPLIER : 1);
+
+        // Apply merge multiplier for 4+ block merges (if enabled)
+        const settings = useSettingsStore.getState();
+        if (globalMerge.blocks.length >= 4 && settings.mergeMultiplier > 1) {
+          score *= settings.mergeMultiplier;
+        }
+
         this.scoreManager.addScore(Math.floor(score));
 
         // Track statistics and check achievements
@@ -1473,7 +1621,16 @@ export class GameScene extends Phaser.Scene {
 
       comboCount++;
       const newValue = merge.value * 2;
-      const score = newValue * (comboCount > 1 ? GAME_CONFIG.COMBO_MULTIPLIER : 1);
+
+      // Calculate score with combo multiplier
+      let score = newValue * (comboCount > 1 ? GAME_CONFIG.COMBO_MULTIPLIER : 1);
+
+      // Apply merge multiplier for 4+ block merges (if enabled)
+      const settings = useSettingsStore.getState();
+      if (merge.blocks.length >= 4 && settings.mergeMultiplier > 1) {
+        score *= settings.mergeMultiplier;
+      }
+
       this.scoreManager.addScore(Math.floor(score));
 
       // Track statistics and check achievements
