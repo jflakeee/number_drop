@@ -34,17 +34,41 @@ export class ScoreManager {
   }
 
   addScore(points: number): void {
-    this.score += points;
-    this.scoreText.setText(this.score.toLocaleString());
+    const oldScore = this.score;
+    const newScore = this.score + points;
+    this.score = newScore;
+
+    // Count-up animation
+    this.scene.tweens.addCounter({
+      from: oldScore,
+      to: newScore,
+      duration: 400,
+      ease: 'Quad.easeOut',
+      onUpdate: (tween) => {
+        const value = Math.floor(tween.getValue());
+        this.scoreText.setText(value.toLocaleString());
+      },
+    });
 
     // Check for new best
     if (this.score > this.bestScore) {
       this.bestScore = this.score;
       this.saveBestScore();
-      this.bestText.setText(`BEST: ${this.bestScore.toLocaleString()}`);
+
+      // Count-up animation for best score
+      this.scene.tweens.addCounter({
+        from: oldScore,
+        to: this.bestScore,
+        duration: 400,
+        ease: 'Quad.easeOut',
+        onUpdate: (tween) => {
+          const value = Math.floor(tween.getValue());
+          this.bestText.setText(`BEST: ${value.toLocaleString()}`);
+        },
+      });
     }
 
-    // Animate score
+    // Pulse animation
     this.scene.tweens.add({
       targets: this.scoreText,
       scaleX: 1.2,

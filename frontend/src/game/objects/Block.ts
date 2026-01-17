@@ -331,6 +331,9 @@ export class Block extends Phaser.GameObjects.Container {
     // Flash effect
     this.highlightGraphics.setAlpha(1);
 
+    // Create merge particles
+    this.createMergeParticles();
+
     this.scene.tweens.add({
       targets: this,
       scaleX: 1.25,
@@ -350,6 +353,69 @@ export class Block extends Phaser.GameObjects.Container {
       alpha: 0.3,
       duration: GAME_CONFIG.MERGE_DURATION / 2,
       yoyo: true,
+    });
+  }
+
+  private createMergeParticles(): void {
+    const colors = BLOCK_COLORS[this.value] || { main: 0xCDC1B4, light: 0xD8CFC4, dark: 0xBBADA0 };
+    const { CELL_SIZE } = GAME_CONFIG;
+    const size = CELL_SIZE - 6;
+
+    // Create particles around the block
+    const particleCount = 12;
+    const particles: Phaser.GameObjects.Graphics[] = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2;
+      const startRadius = size / 3;
+      const startX = Math.cos(angle) * startRadius;
+      const startY = Math.sin(angle) * startRadius;
+
+      // Create particle
+      const particle = this.scene.add.graphics();
+      particle.fillStyle(colors.light, 1);
+      particle.fillCircle(0, 0, 4);
+      particle.fillStyle(0xFFFFFF, 0.8);
+      particle.fillCircle(0, 0, 2);
+
+      // Position particle
+      particle.setPosition(this.x + startX, this.y + startY);
+      particles.push(particle);
+
+      // Animate particle outward and fade
+      const endRadius = size * 1.5;
+      const endX = Math.cos(angle) * endRadius;
+      const endY = Math.sin(angle) * endRadius;
+
+      this.scene.tweens.add({
+        targets: particle,
+        x: this.x + endX,
+        y: this.y + endY,
+        alpha: 0,
+        scale: 0.3,
+        duration: GAME_CONFIG.MERGE_DURATION,
+        ease: 'Quad.easeOut',
+        onComplete: () => {
+          particle.destroy();
+        },
+      });
+    }
+
+    // Add a burst effect in the center
+    const burstParticle = this.scene.add.graphics();
+    burstParticle.fillStyle(0xFFFFFF, 0.8);
+    burstParticle.fillCircle(0, 0, size / 2);
+    burstParticle.setPosition(this.x, this.y);
+
+    this.scene.tweens.add({
+      targets: burstParticle,
+      alpha: 0,
+      scale: 2.5,
+      duration: GAME_CONFIG.MERGE_DURATION / 2,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        burstParticle.destroy();
+      },
     });
   }
 

@@ -41,9 +41,20 @@ npm run lint         # ESLint
 cd flutter_app
 flutter pub get
 flutter run          # Run on connected device/emulator
-flutter build apk    # Build Android APK
-flutter build ios    # Build iOS
+flutter run -d chrome  # Run in web browser
+flutter build apk --release    # Build Android APK
+flutter build appbundle --release  # Build Android App Bundle (Play Store)
+flutter build ios --release    # Build iOS
 ```
+
+**Requirements:** Flutter SDK 3.10.4+
+
+**Key Dependencies:**
+- `flame` (1.34.0) - Game engine
+- `flame_audio` (2.11.12) - Audio support
+- `provider` (6.1.5) - State management
+- `shared_preferences` (2.5.4) - Local storage
+- `http` (1.6.0) - API calls
 
 ### Docker (Full Stack)
 ```bash
@@ -55,13 +66,14 @@ docker-compose down            # Stop all services
 ## Architecture
 
 ### Frontend Path Aliases (vite.config.ts)
+- `@` → `src/` (root source directory)
 - `@game` → `src/game/` (Phaser scenes, game objects)
-- `@services` → `src/services/` (AudioService, StorageService, AdService, LeaderboardService)
+- `@services` → `src/services/` (AudioService, StorageService, AdService, LeaderboardService, AchievementService, GameStateService, StatisticsService)
 - `@store` → `src/store/` (Zustand stores: gameStore, settingsStore)
 - `@ui` → `src/ui/` (React components for menus)
 
 ### Phaser Scene Flow
-`BootScene` → `MenuScene` → `GameScene` ↔ `GameOverScene` / `LeaderboardScene` / `StatsScene`
+`BootScene` → `MenuScene` → `GameScene` ↔ `GameOverScene` / `LeaderboardScene` / `StatsScene` / `SettingsScene`
 
 ### Key Game Objects (frontend/src/game/objects/)
 - `Grid.ts` - Block grid management, merge detection, gravity, hint display
@@ -80,11 +92,11 @@ docker-compose down            # Stop all services
 
 ## Ad Policy
 
-The game follows a strict user-friendly ad policy (see `AdService.ts`):
+The game follows a strict user-friendly ad policy (see `frontend/src/services/AdService.ts`):
 
 **Allowed:**
 - Fixed banner ads at top/bottom only
-- Rewarded ads ONLY when user clicks ad button
+- Rewarded ads ONLY when user clicks ad button (e.g., "Get Points" button, item usage)
 - Ad icon (📺) visible on buttons that trigger ads
 
 **Prohibited:**
@@ -93,6 +105,12 @@ The game follows a strict user-friendly ad policy (see `AdService.ts`):
 - Ads on level up or stage clear
 - Any ads that interrupt gameplay
 
+**UI Layout Considerations:**
+- Banner ads must not overlap with game grid or UI elements
+- Top menu (score, pause, ranking, block preview, settings) displayed in single row
+- Bottom item buttons positioned above banner ad zone
+- Block preview positioned at top-right to avoid grid overlap
+
 ## Game Configuration
 
 Game constants are in `frontend/src/game/config.ts`:
@@ -100,11 +118,14 @@ Game constants are in `frontend/src/game/config.ts`:
 - Starting numbers: [2, 4]
 - Combo multiplier: 1.5x
 - Animation timings: DROP_DURATION, MERGE_DURATION, SPAWN_DURATION
+- Next block preview and next-next block preview displayed at top-right
 
 Settings toggles (via settingsStore):
 - `chainMerge` - Enable/disable chain reactions
 - `showHint` - Show mergeable block hints
 - `difficulty` - Easy/Normal/Hard (affects drop number range)
+- Sound effects - Multiple collision sound options (wood, glass, gem, metal, candy, drum, piano)
+- Block collision animations - None, jelly squish, lightning flash
 
 ## Service Ports
 - Frontend dev: 3000
@@ -112,3 +133,33 @@ Settings toggles (via settingsStore):
 - PostgreSQL: 5432
 - Redis: 6379
 - Nginx (production): 80
+
+## Testing
+
+This project currently has no test configuration. When adding tests:
+- Frontend: Consider Vitest for unit/integration tests
+- Backend: Consider Jest or Vitest with supertest for API tests
+- Flutter: Use `flutter test` (flutter_test package already configured)
+
+## Important Implementation Notes
+
+**Block Drop Physics:**
+- Drop should start at clicked x-coordinate, not screen center
+- Prevent mouse tracking during block drop animation
+- Avoid mid-air floating blocks with proper collision detection
+- Natural bounce animation on landing
+
+**Block Merging:**
+- Ensure blocks merge properly without overlapping or passing through
+- Support chain reactions when chainMerge setting is enabled
+- Next drop number should be within range of max visible block / 8
+
+**Recent Improvements (2026-01-17):**
+- Top menu now displays in single row (y:45) with coins, score, ranking, settings ✅ Tested
+- Merge particles added (12 radial particles + center burst effect) ✅ Tested
+- Score counter animates with count-up effect over 400ms ✅ Tested
+
+**Testing:**
+- All High Priority benchmark improvements verified with Playwright
+- Test report: `docs/test_report_20260117.md`
+- Screenshots saved in Downloads folder

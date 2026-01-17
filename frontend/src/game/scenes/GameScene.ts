@@ -109,8 +109,8 @@ export class GameScene extends Phaser.Scene {
     this.gridY = 150;
     this.grid = new Grid(this, this.gridX, this.gridY);
 
-    // Initialize score manager (top row, centered)
-    this.scoreManager = new ScoreManager(this, width / 2, 45);
+    // Initialize score manager (below header, centered)
+    this.scoreManager = new ScoreManager(this, width / 2, 105);
 
     // Create column selection arrows
     this.createColumnArrows();
@@ -311,20 +311,36 @@ export class GameScene extends Phaser.Scene {
     const { width } = this.cameras.main;
     const { COLORS } = GAME_CONFIG;
 
-    // Header background
-    this.add.rectangle(width / 2, 60, width, 120, COLORS.DARK);
+    // Header background - reduced height for single row
+    this.add.rectangle(width / 2, 45, width, 90, COLORS.DARK);
 
-    // Pause button
-    const pauseBtn = this.add.text(30, 40, '⏸', {
-      fontSize: '28px',
+    // Left section: Pause button
+    const pauseBtn = this.add.text(20, 45, '⏸', {
+      fontSize: '24px',
     });
+    pauseBtn.setOrigin(0, 0.5);
     pauseBtn.setInteractive({ useHandCursor: true });
     pauseBtn.on('pointerdown', () => this.pauseAndSave());
 
-    // Settings button
-    const settingsBtn = this.add.text(width - 50, 40, '⚙', {
-      fontSize: '28px',
+    // Left section: Coin display
+    const coinIcon = this.add.text(55, 45, '💰', {
+      fontSize: '18px',
     });
+    coinIcon.setOrigin(0, 0.5);
+
+    this.coinsText = this.add.text(80, 45, this.coins.toString(), {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      color: '#FFD700',
+      fontStyle: 'bold',
+    });
+    this.coinsText.setOrigin(0, 0.5);
+
+    // Right section: Settings button
+    const settingsBtn = this.add.text(width - 20, 45, '⚙', {
+      fontSize: '24px',
+    });
+    settingsBtn.setOrigin(1, 0.5);
     settingsBtn.setInteractive({ useHandCursor: true });
     settingsBtn.on('pointerdown', () => {
       this.saveGame();
@@ -335,8 +351,8 @@ export class GameScene extends Phaser.Scene {
   private createRankingDisplay(): void {
     const { width } = this.cameras.main;
 
-    // Container for ranking display (second row, right side)
-    this.rankContainer = this.add.container(width - 80, 95);
+    // Container for ranking display (same row, right side before settings)
+    this.rankContainer = this.add.container(width - 140, 45);
 
     // Background
     const bg = this.add.graphics();
@@ -515,23 +531,28 @@ export class GameScene extends Phaser.Scene {
 
   private createPreviewArea(): void {
     const { CELL_SIZE, COLORS } = GAME_CONFIG;
+    const { width } = this.cameras.main;
 
-    // Preview container positioned in header area (second row, left side)
-    const previewX = 100;
-    const previewY = 95;
+    // Preview container positioned below score, centered horizontally
+    const previewX = width / 2;
+    const previewY = 120;
 
     this.previewContainer = this.add.container(previewX, previewY);
 
-    // Background for preview area
+    // Calculate center offset for horizontal alignment
+    const totalWidth = CELL_SIZE * 0.7 + 15 + CELL_SIZE * 0.5;
+    const centerOffset = -totalWidth / 2;
+
+    // Background for preview area (centered)
     const previewAreaBg = this.add.graphics();
     previewAreaBg.fillStyle(0x222831, 0.8);
-    previewAreaBg.fillRoundedRect(-15, -25, 130, 50, 8);
+    previewAreaBg.fillRoundedRect(centerOffset - 15, -25, totalWidth + 30, 50, 8);
     previewAreaBg.lineStyle(1, 0x4ECDC4, 0.3);
-    previewAreaBg.strokeRoundedRect(-15, -25, 130, 50, 8);
+    previewAreaBg.strokeRoundedRect(centerOffset - 15, -25, totalWidth + 30, 50, 8);
     this.previewContainer.add(previewAreaBg);
 
     // "NEXT" label
-    const nextLabel = this.add.text(0, -15, 'NEXT', {
+    const nextLabel = this.add.text(centerOffset, -15, 'NEXT', {
       fontFamily: 'Arial',
       fontSize: '9px',
       color: '#4ECDC4',
@@ -543,11 +564,11 @@ export class GameScene extends Phaser.Scene {
     // Preview background box for NEXT
     const previewBg = this.add.graphics();
     previewBg.fillStyle(COLORS.DARK, 0.3);
-    previewBg.fillRoundedRect(0, -5, CELL_SIZE * 0.7, CELL_SIZE * 0.7, 6);
+    previewBg.fillRoundedRect(centerOffset, -5, CELL_SIZE * 0.7, CELL_SIZE * 0.7, 6);
     this.previewContainer.add(previewBg);
 
     // "+1" label
-    const nextNextLabel = this.add.text(CELL_SIZE * 0.7 + 15, -15, '+1', {
+    const nextNextLabel = this.add.text(centerOffset + CELL_SIZE * 0.7 + 15, -15, '+1', {
       fontFamily: 'Arial',
       fontSize: '9px',
       color: '#999999',
@@ -558,7 +579,7 @@ export class GameScene extends Phaser.Scene {
     // Preview background box for NEXT+1
     const previewBg2 = this.add.graphics();
     previewBg2.fillStyle(COLORS.DARK, 0.2);
-    previewBg2.fillRoundedRect(CELL_SIZE * 0.7 + 15, -2, CELL_SIZE * 0.5, CELL_SIZE * 0.5, 4);
+    previewBg2.fillRoundedRect(centerOffset + CELL_SIZE * 0.7 + 15, -2, CELL_SIZE * 0.5, CELL_SIZE * 0.5, 4);
     this.previewContainer.add(previewBg2);
   }
 
@@ -573,14 +594,7 @@ export class GameScene extends Phaser.Scene {
     const barY = height - itemBarHeight / 2 - bannerOffset - 10; // Extra 10px padding from banner
     this.add.rectangle(width / 2, barY, width, itemBarHeight, COLORS.DARK, 0.95);
 
-    // Coins display (at top of item bar)
-    this.add.text(20, barY - 50, '💰', { fontSize: '18px' });
-    this.coinsText = this.add.text(50, barY - 50, this.coins.toString(), {
-      fontFamily: 'Arial',
-      fontSize: '16px',
-      color: '#FFD700',
-      fontStyle: 'bold',
-    });
+    // Coins display removed - now in header (single row layout)
 
     // Item buttons configuration - two rows
     const itemsRow1: { type: ItemType; icon: string; label: string; cost: number }[] = [
@@ -1088,12 +1102,17 @@ export class GameScene extends Phaser.Scene {
       this.nextNextBlockPreview = null;
     }
 
-    // Preview position in header area (matches createPreviewArea - second row)
-    const previewBaseX = 100;
-    const previewBaseY = 95;
+    // Preview position below score (matches createPreviewArea)
+    const { width } = this.cameras.main;
+    const previewBaseX = width / 2;
+    const previewBaseY = 120;
 
-    // NEXT block preview
-    const nextX = previewBaseX + CELL_SIZE * 0.35;
+    // Calculate center offset for horizontal alignment
+    const totalWidth = CELL_SIZE * 0.7 + 15 + CELL_SIZE * 0.5;
+    const centerOffset = -totalWidth / 2;
+
+    // NEXT block preview (centered)
+    const nextX = previewBaseX + centerOffset + CELL_SIZE * 0.35;
     const nextY = previewBaseY + CELL_SIZE * 0.35 - 5;
     this.nextBlockPreview = new Block(this, nextX, nextY, this.nextValue);
     this.nextBlockPreview.setScale(0.6);
@@ -1105,8 +1124,8 @@ export class GameScene extends Phaser.Scene {
       ease: 'Quad.easeOut',
     });
 
-    // NEXT+1 block preview
-    const nextNextX = previewBaseX + CELL_SIZE * 0.7 + 15 + CELL_SIZE * 0.25;
+    // NEXT+1 block preview (centered)
+    const nextNextX = previewBaseX + centerOffset + CELL_SIZE * 0.7 + 15 + CELL_SIZE * 0.25;
     const nextNextY = previewBaseY + CELL_SIZE * 0.25 - 2;
     this.nextNextBlockPreview = new Block(this, nextNextX, nextNextY, this.nextNextValue);
     this.nextNextBlockPreview.setScale(0.45);
