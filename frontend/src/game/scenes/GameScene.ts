@@ -675,16 +675,17 @@ export class GameScene extends Phaser.Scene {
     // Coins display removed - now in header (single row layout)
 
     // Item buttons configuration - two rows
+    // Item prices balanced for better gameplay progression
     const itemsRow1: { type: ItemType; icon: string; label: string; cost: number }[] = [
-      { type: 'undo', icon: '↩️', label: '되돌리기', cost: 50 },
-      { type: 'bomb', icon: '💣', label: '폭탄', cost: 100 },
-      { type: 'shuffle', icon: '🔀', label: '셔플', cost: 100 },
+      { type: 'undo', icon: '↩️', label: '되돌리기', cost: 30 },    // Reduced: frequently needed
+      { type: 'bomb', icon: '💣', label: '폭탄', cost: 80 },        // Reduced: strategic removal
+      { type: 'shuffle', icon: '🔀', label: '셔플', cost: 60 },     // Reduced: board repositioning
     ];
 
     const itemsRow2: { type: ItemType; icon: string; label: string; cost: number }[] = [
-      { type: 'split', icon: '➗', label: '분할', cost: 150 },
-      { type: 'pickup', icon: '🎯', label: '픽업', cost: 200 },
-      { type: 'remove', icon: '🗑️', label: '제거', cost: 120 },
+      { type: 'split', icon: '➗', label: '분할', cost: 120 },       // Reduced: powerful but situational
+      { type: 'pickup', icon: '🎯', label: '픽업', cost: 150 },     // Reduced: strategic movement
+      { type: 'remove', icon: '🗑️', label: '제거', cost: 80 },      // Reduced: same as bomb
     ];
 
     // Create item buttons - Row 1
@@ -1352,7 +1353,7 @@ export class GameScene extends Phaser.Scene {
     if (this.activeItem === 'bomb') {
       if (gridPos && this.grid.getBlockAt(gridPos.col, gridPos.row)) {
         if (!this.itemPaidWithAd) {
-          this.spendCoins(100);
+          this.spendCoins(80);  // Balanced price
         }
         this.itemPaidWithAd = false;
         this.cancelItemMode();
@@ -1368,7 +1369,7 @@ export class GameScene extends Phaser.Scene {
     if (this.activeItem === 'split') {
       if (gridPos && this.grid.canSplitBlock(gridPos.col, gridPos.row)) {
         if (!this.itemPaidWithAd) {
-          this.spendCoins(150);
+          this.spendCoins(120);  // Balanced price
         }
         this.itemPaidWithAd = false;
         this.cancelItemMode();
@@ -1386,7 +1387,7 @@ export class GameScene extends Phaser.Scene {
     if (this.activeItem === 'remove') {
       if (gridPos && this.grid.getBlockAt(gridPos.col, gridPos.row)) {
         if (!this.itemPaidWithAd) {
-          this.spendCoins(120);
+          this.spendCoins(80);  // Balanced price
         }
         this.itemPaidWithAd = false;
         this.cancelItemMode();
@@ -1415,7 +1416,7 @@ export class GameScene extends Phaser.Scene {
         // Pick up a block
         if (gridPos && this.grid.getBlockAt(gridPos.col, gridPos.row)) {
           if (!this.itemPaidWithAd) {
-            this.spendCoins(200);
+            this.spendCoins(150);  // Balanced price
           }
           this.itemPaidWithAd = false;
           const block = this.grid.pickupBlock(gridPos.col, gridPos.row);
@@ -1475,9 +1476,9 @@ export class GameScene extends Phaser.Scene {
     const targetPos = this.grid.getCellPosition(col, row);
     const { CELL_SIZE } = GAME_CONFIG;
 
-    // Instantly move block to the correct column x position at the top of grid
+    // Instantly move block to the correct column x position at higher starting position
     const startX = this.gridX + col * CELL_SIZE + CELL_SIZE / 2;
-    const startY = this.gridY - CELL_SIZE / 2; // Just above the grid
+    const startY = this.gridY - CELL_SIZE * 2; // Start 2 cells above grid for more dramatic drop
     this.currentBlock.setPosition(startX, startY);
 
     // Animate vertical drop with natural gravity acceleration
