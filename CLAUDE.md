@@ -45,16 +45,10 @@ flutter run -d chrome  # Run in web browser
 flutter build apk --release    # Build Android APK
 flutter build appbundle --release  # Build Android App Bundle (Play Store)
 flutter build ios --release    # Build iOS
+flutter test         # Run unit tests
 ```
 
-**Requirements:** Flutter SDK 3.10.4+
-
-**Key Dependencies:**
-- `flame` (1.34.0) - Game engine
-- `flame_audio` (2.11.12) - Audio support
-- `provider` (6.1.5) - State management
-- `shared_preferences` (2.5.4) - Local storage
-- `http` (1.6.0) - API calls
+**Requirements:** Flutter SDK ^3.10.4 (see pubspec.yaml for exact constraints)
 
 ### Docker (Full Stack)
 ```bash
@@ -157,26 +151,12 @@ This project currently has no test configuration. When adding tests:
 - 4+ block merges get multiplier bonus (configurable via mergeMultiplier setting)
 - Next drop number should be within range of max visible block / 8
 
-**Phase 5 Implementation Complete (2026-01-17):**
+## Key Implementation Locations
 
-All 9 benchmark improvements implemented and tested (commits: 57f6f51, e75514d, e96c9cd)
-
-**High Priority (✅ Complete):**
-- Top menu single-row layout (GameScene.ts:310-400)
-- 12-particle merge effects with center burst (Block.ts:359-420)
-- Score count-up animation, 400ms (ScoreManager.ts:42-80)
-
-**Medium Priority (✅ Complete):**
-- 4-block merge multiplier setting (settingsStore.ts + GameScene.ts:1437-1486)
-- Full-screen combo flash (3+ combos, color-coded by count, GameScene.ts:1002-1056)
-- Enhanced rank-up notification (220x100px, trophy, stars, GameScene.ts:428-557)
-
-**Low Priority (✅ Complete):**
-- Block drop height: 2 cells above grid (GameScene.ts:1480)
-- Item prices balanced 20-40% lower (GameScene.ts:678-689)
-- Landing page scene with animations (LandingScene.ts, 206 lines)
-
-**Test Reports:**
-- `docs/test_report_20260117.md` (High Priority)
-- `docs/medium_priority_implementation.md` (Medium Priority)
-- `docs/low_priority_implementation.md` (Low Priority)
+When modifying core game features, refer to these files:
+- **Top menu layout:** `GameScene.ts` (~line 310-400)
+- **Merge particle effects:** `Block.ts` (~line 359-420)
+- **Score animations:** `ScoreManager.ts` (~line 42-80)
+- **Combo flash effects:** `GameScene.ts` (~line 1002-1056)
+- **Rank-up notifications:** `GameScene.ts` (~line 428-557)
+- **Landing scene:** `LandingScene.ts`
